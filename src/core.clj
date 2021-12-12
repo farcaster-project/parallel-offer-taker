@@ -3,20 +3,23 @@
             [clojure.data.json :as json]
             [clojure.java.shell :only [sh]]))
 
-(def cached-call (http/get "https://farcaster.dev/api/offers"))
+(defn offers-get []
+  (-> (http/get "https://farcaster.dev/api/offers")
+      :body
+      json/read-json
+      (#(map :raw_offer %)))
+  )
 
-(keys cached-call)
+(def offers (atom (offers-get)))
 
-(def offers (map :raw_offer (json/read-json (:body cached-call))))
+(def offers-cached (atom @offers))
 
-(def offers-cached offers)
+(into #{} @offers)
+(count (clojure.set/difference (into #{} @offers) (into #{} offers-cached)))
+(count (clojure.set/difference (into #{} offers-cached) (into #{} @offers)))
 
-(into #{} offers)
-(count (clojure.set/difference (into #{} offers) (into #{} offers-cached)))
-(count (clojure.set/difference (into #{} offers-cached) (into #{} offers)))
 
-(def master-data-dir "***REMOVED***")
-(def swap-take-vec ["swap-cli"])
+(def master-data-dir "./data_dirs/")
 
 (def farcaster-stash-btc "***REMOVED***")
 (def farcaster-stash-xmr "***REMOVED***")
@@ -32,7 +35,9 @@
                                           "take" "-w"
                                           "--btc-addr" farcaster-stash-btc
                                           "--xmr-addr" farcaster-stash-xmr
-                                          "--offer" (nth offers swap-index)]))))
+                                          "--offer" (nth @offers swap-index)]))))
 
-(count offers)
-(map offer-take (range 10))
+(count @offers)
+(do
+  (reset! offers (offers-get))
+  (map offer-take (range 10)))
