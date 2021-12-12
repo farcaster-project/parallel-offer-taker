@@ -1,4 +1,4 @@
-(ns core
+(ns parallel-offer-taker.core
   (:require [clj-http.client :as http]
             [clojure.data.json :as json]
             [clojure.java.shell :only [sh]]))
@@ -17,7 +17,6 @@
 (into #{} @offers)
 (count (clojure.set/difference (into #{} @offers) (into #{} offers-cached)))
 (count (clojure.set/difference (into #{} offers-cached) (into #{} @offers)))
-
 
 (def master-data-dir "./data_dirs/")
 
