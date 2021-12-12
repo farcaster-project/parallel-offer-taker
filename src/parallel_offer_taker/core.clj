@@ -37,9 +37,12 @@
                                           "--offer" (nth @offers swap-index)]))))
 
 (defn -main [& args]
-  (do
-    (println "args: " args)
-    (reset! offers (offers-get))
-    (map offer-take (range 10))))
-
-(-main)
+  (if (= (count args) 2)
+    (let [[min-swap-index max-swap-index] args]
+      (do
+       (println "swap index range: " min-swap-index max-swap-index)
+       (reset! offers (offers-get))
+       (map offer-take (range min-swap-index (inc max-swap-index)))
+       ))
+    (println "required args: min-swap-index max-swap-index"))
+  )
