@@ -1,6 +1,9 @@
 {:aliases {:native-image
            {:main-opts ["-m" "clj.native-image" "parallel-offer-taker.core"
-                        "--initialize-at-build-time"
+                        "--no-fallback"
+                        "--initialize-at-build-time=clojure,parallel-offer-taker.core"
+                        "--enable-https"
+                        "--report-unsupported-elements-at-runtime"
                         ;; optional native image name override
                         "-H:Name=parallel-offer-taker"]
             :jvm-opts ["-Dclojure.compiler.direct-linking=true"]
@@ -9,6 +12,9 @@
              {:git/url "https://github.com/taylorwood/clj.native-image.git"
               :sha "7708e7fd4572459c81f6a6b8e44c96f41cdd92d4"}}}}
  :deps
- {clj-http {:mvn/version "3.12.3"}
-  org.clojure/data.json {:mvn/version "2.4.0"}}
+ {
+ clj-http/clj-http {:mvn/version "3.12.3"}
+ org.clojure/data.json {:mvn/version "2.4.0"}}
+ org.clojure/clojure {:mvn/version "1.10.3"}
  }
+
