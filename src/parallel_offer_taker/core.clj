@@ -1,7 +1,8 @@
 (ns parallel-offer-taker.core
   (:require [clj-http.client :as http]
             [clojure.data.json :as json]
-            [clojure.java.shell :only [sh]]))
+            [clojure.java.shell :only [sh]])
+  (:gen-class))
 
 (defn offers-get []
   (-> (http/get "https://farcaster.dev/api/offers")
@@ -12,11 +13,10 @@
 
 (def offers (atom (offers-get)))
 
-(def offers-cached (atom @offers))
-
-(into #{} @offers)
-(count (clojure.set/difference (into #{} @offers) (into #{} offers-cached)))
-(count (clojure.set/difference (into #{} offers-cached) (into #{} @offers)))
+(comment
+  (def offers-cached (atom @offers))
+  (count (clojure.set/difference (into #{} @offers) (into #{} offers-cached)))
+  (count (clojure.set/difference (into #{} offers-cached) (into #{} @offers))))
 
 (def master-data-dir "./data_dirs/")
 
@@ -26,7 +26,7 @@
 (defn help []
   (println (:out (apply clojure.java.shell/sh ["swap-cli" "help"]))))
 
-(help)
+(comment (help))
 
 (defn offer-take [swap-index]
   (println (:out (apply clojure.java.shell/sh ["swap-cli"
@@ -36,7 +36,10 @@
                                           "--xmr-addr" farcaster-stash-xmr
                                           "--offer" (nth @offers swap-index)]))))
 
-(count @offers)
-(do
-  (reset! offers (offers-get))
-  (map offer-take (range 10)))
+(defn -main [& args]
+  (do
+    (println "args: " args)
+    (reset! offers (offers-get))
+    (map offer-take (range 10))))
+
+(-main)
