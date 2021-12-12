@@ -38,7 +38,7 @@
 
 (defn -main [& args]
   (if (= (count args) 2)
-    (let [[min-swap-index max-swap-index] (map #(Integer/parseInt %) ["0" "-1"])]
+    (let [[min-swap-index max-swap-index] (map #(Integer/parseInt %) args)]
       (do
        (println "swap index range: " min-swap-index max-swap-index)
        (reset! offers (offers-get))
