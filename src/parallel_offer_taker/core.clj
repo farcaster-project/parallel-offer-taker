@@ -20,7 +20,9 @@
 
 (def master-data-dir "./data_dirs/")
 
+;; (def farcaster-stash-btc "***REMOVED***")
 (def farcaster-stash-btc "***REMOVED***")
+;; (def farcaster-stash-xmr "***REMOVED***")
 (def farcaster-stash-xmr "***REMOVED***")
 
 (defn help []
@@ -29,12 +31,25 @@
 (comment (help))
 
 (defn offer-take [swap-index]
-  (println (:out (apply clojure.java.shell/sh ["swap-cli"
-                                          "-d" (str master-data-dir ".data_dir_" swap-index)
-                                          "take" "-w"
-                                          "--btc-addr" farcaster-stash-btc
-                                          "--xmr-addr" farcaster-stash-xmr
-                                          "--offer" (nth @offers swap-index)]))))
+  (let [result (apply clojure.java.shell/sh ["/home/lederstrumpf/.cargo/bin/swap-cli"
+                                            "-d" (str master-data-dir ".data_dir_" swap-index)
+                                            "take" "-w"
+                                            "--btc-addr" farcaster-stash-btc
+                                            "--xmr-addr" farcaster-stash-xmr
+                                            "--offer" (nth @offers (mod swap-index (count @offers)))])]
+    (println [(:out result) (:err result)])
+    ))
+
+(def simple (atom 0))
+(def simple (atom 200))
+(let [count 30]
+  (do
+   (reset! offers (doall (offers-get)))
+   (doall (map offer-take (range @simple (+ @simple count))))
+   (reset! simple (+ count @simple))
+   (reset! offers-bag @offers)
+   (println @simple)
+   ))
 
 (defn -main [& args]
   (if (= (count args) 2)
@@ -42,7 +57,24 @@
       (do
        (println "swap index range: " min-swap-index max-swap-index)
        (reset! offers (offers-get))
-       (map offer-take (range min-swap-index (inc max-swap-index)))
+       ;; (println "offers: " @offers)
+       (map offer-take (range min-swap-index (max (inc max-swap-index) (+ min-swap-index (count @offers)))))
        ))
     (println "required args: min-swap-index max-swap-index"))
   )
+
+(defn local-main [& args]
+  (if (= (count args) 2)
+    (let [[min-swap-index max-swap-index] args]
+      (do
+        (println "swap index range: " min-swap-index max-swap-index)
+        (reset! offers (offers-get)) 
+        ;; (println "offers: " @offers)
+        (map offer-take (range min-swap-index (max (inc max-swap-index) (+ min-swap-index (count @offers)))))
+        ;; (swap! x #(+ % 10))
+        ))
+    (println "required args: min-swap-index max-swap-index"))
+  )
+(reset! offers (offers-get))
+(count @offers)
+(def offers-cached @offers)
