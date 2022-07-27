@@ -1,7 +1,9 @@
 (ns parallel-offer-taker.core
-  (:require [clj-http.client :as http]
-            [clojure.data.json :as json]
-            [clojure.java.shell :only [sh]])
+  (:require
+   [clj-http.client :as http]
+   [clojure.data.json :as json]
+   [clojure.java.shell :only [sh]]
+   clojure.set)
   (:gen-class))
 
 (defn offers-get []
@@ -12,13 +14,14 @@
   )
 
 (def offers (atom (offers-get)))
+(defn update-offers []
+  (reset! offers (offers-get)))
 
-(comment
-  (def offers-cached (atom @offers))
-  (count (clojure.set/difference (into #{} @offers) (into #{} offers-cached)))
-  (count (clojure.set/difference (into #{} offers-cached) (into #{} @offers))))
+(def offers-cached (atom @offers))
+(count (clojure.set/difference (into #{} @offers) (into #{} @offers-cached)))
+(count (clojure.set/difference (into #{} @offers-cached) (into #{} @offers)))
 
-(def master-data-dir "./data_dirs/")
+(def master-data-dir "***REMOVED***")
 
 ;; (def farcaster-stash-btc "***REMOVED***")
 (def farcaster-stash-btc "***REMOVED***")
@@ -31,7 +34,7 @@
 (comment (help))
 
 (defn offer-take [swap-index]
-  (let [result (apply clojure.java.shell/sh ["/home/lederstrumpf/.cargo/bin/swap-cli"
+  (let [result (apply clojure.java.shell/sh ["~/.cargo/bin/swap-cli"
                                             "-d" (str master-data-dir ".data_dir_" swap-index)
                                             "take" "-w"
                                             "--btc-addr" farcaster-stash-btc
@@ -41,25 +44,28 @@
     ))
 
 (def simple (atom 0))
-(def simple (atom 200))
-(let [count 30]
-  (do
-   (reset! offers (doall (offers-get)))
+(comment (reset! simple 200))
+
+(let [count 20]
+  (reset! offers (doall (offers-get)))
    (doall (map offer-take (range @simple (+ @simple count))))
    (reset! simple (+ count @simple))
-   (reset! offers-bag @offers)
+   ;; (reset! offers-bag @offers)
    (println @simple)
-   ))
+)
+
+(comment
+  (update-offers)
+  (pmap offer-take (range 20)))
 
 (defn -main [& args]
   (if (= (count args) 2)
     (let [[min-swap-index max-swap-index] (map #(Integer/parseInt %) args)]
-      (do
-       (println "swap index range: " min-swap-index max-swap-index)
-       (reset! offers (offers-get))
-       ;; (println "offers: " @offers)
-       (map offer-take (range min-swap-index (max (inc max-swap-index) (+ min-swap-index (count @offers)))))
-       ))
+      (println "swap index range: " min-swap-index max-swap-index)
+      (reset! offers (offers-get))
+      ;; (println "offers: " @offers)
+      (map offer-take (range min-swap-index (max (inc max-swap-index) (+ min-swap-index (count @offers)))))
+      )
     (println "required args: min-swap-index max-swap-index"))
   )
 
@@ -68,13 +74,15 @@
     (let [[min-swap-index max-swap-index] args]
       (do
         (println "swap index range: " min-swap-index max-swap-index)
-        (reset! offers (offers-get)) 
+        (reset! offers (offers-get))
         ;; (println "offers: " @offers)
         (map offer-take (range min-swap-index (max (inc max-swap-index) (+ min-swap-index (count @offers)))))
         ;; (swap! x #(+ % 10))
         ))
     (println "required args: min-swap-index max-swap-index"))
   )
-(reset! offers (offers-get))
-(count @offers)
-(def offers-cached @offers)
+
+(comment
+  (reset! offers (offers-get))
+  (count @offers)
+  (def offers-cached @offers))
