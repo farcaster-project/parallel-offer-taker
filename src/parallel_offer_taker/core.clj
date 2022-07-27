@@ -46,13 +46,13 @@
 (def simple (atom 0))
 (comment (reset! simple 200))
 
-(let [count 20]
-  (reset! offers (doall (offers-get)))
-   (doall (map offer-take (range @simple (+ @simple count))))
-   (reset! simple (+ count @simple))
-   ;; (reset! offers-bag @offers)
-   (println @simple)
-)
+(comment (let [count 20]
+           (reset! offers (doall (offers-get)))
+           (doall (map offer-take (range @simple (+ @simple count))))
+           (reset! simple (+ count @simple))
+           ;; (reset! offers-bag @offers)
+           (println @simple)
+           ))
 
 (comment
   (update-offers)

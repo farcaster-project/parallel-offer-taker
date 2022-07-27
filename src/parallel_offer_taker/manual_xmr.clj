@@ -106,7 +106,7 @@
             "ring_size" 11,
             "get_tx_key" true}})
 
-(http/post "http://127.0.0.1:38085/json_rpc" {:body "{\"jsonrpc\":\"2.0\",\"id\":\"0\",\"method\":\"transfer\",\"params\":{\"destinations\":[{\"amount\":100000000000,\"address\":\"***REMOVED***\"},{\"amount\":200000000000,\"address\":\"***REMOVED***\"}],\"account_index\":0,\"subaddr_indices\":[0],\"priority\":0,\"ring_size\":7,\"get_tx_key\": true}}"})
+(comment (http/post "http://127.0.0.1:38085/json_rpc" {:body "{\"jsonrpc\":\"2.0\",\"id\":\"0\",\"method\":\"transfer\",\"params\":{\"destinations\":[{\"amount\":100000000000,\"address\":\"***REMOVED***\"},{\"amount\":200000000000,\"address\":\"***REMOVED***\"}],\"account_index\":0,\"subaddr_indices\":[0],\"priority\":0,\"ring_size\":7,\"get_tx_key\": true}}"}))
 
 (reset! output-list (destination-array))
 
