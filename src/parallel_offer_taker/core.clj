@@ -1,10 +1,12 @@
 (ns parallel-offer-taker.core
   (:require
-   [clj-http.client :as http]
+   [clj-http.lite.client :as http]
    [clojure.data.json :as json]
-   [clojure.java.shell :only [sh]]
+   [clojure.java.shell]
+   clojure.core
    clojure.set)
-  (:gen-class))
+  (:gen-class)
+  )
 
 (defn offers-get []
   (-> (http/get "https://farcaster.dev/api/offers")
@@ -13,7 +15,8 @@
       (#(map :raw_offer %)))
   )
 
-(def offers (atom (offers-get)))
+(def offers (atom nil))
+
 (defn update-offers []
   (reset! offers (offers-get)))
 
@@ -69,18 +72,7 @@
     (println "required args: min-swap-index max-swap-index"))
   )
 
-(defn local-main [& args]
-  (if (= (count args) 2)
-    (let [[min-swap-index max-swap-index] args]
-      (do
-        (println "swap index range: " min-swap-index max-swap-index)
-        (reset! offers (offers-get))
-        ;; (println "offers: " @offers)
-        (map offer-take (range min-swap-index (max (inc max-swap-index) (+ min-swap-index (count @offers)))))
-        ;; (swap! x #(+ % 10))
-        ))
-    (println "required args: min-swap-index max-swap-index"))
-  )
+(comment (-main "0" "20"))
 
 (comment
   (reset! offers (offers-get))
