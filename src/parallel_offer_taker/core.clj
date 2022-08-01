@@ -4,6 +4,7 @@
    clojure.core
    [clojure.data.json :as json]
    clojure.edn
+   clojure.java.io
    [clojure.java.shell]
    clojure.set)
   (:gen-class)
@@ -59,6 +60,38 @@
 (comment
   (update-offers)
   (pmap offer-take (range 20)))
+
+(defn add-missing-trailing-slash [path]
+  (if (not= \/ (last path))
+    (str path "/")
+    path))
+
+(defn data-dir [swap-index {:keys [data-dir-root]}]
+  (let [data-dir (str (add-missing-trailing-slash data-dir-root) ".data_dir_" swap-index)]
+    (try
+      (if (.exists (clojure.java.io/as-file data-dir))
+        data-dir
+        (throw (Exception. (str data-dir " does not exist"))))
+      (catch Exception e
+        (println e)))))
+
+(defn binary-dir [config]
+  (or (add-missing-trailing-slash (:farcaster-binaries-path config)) "***REMOVED***"))
+
+(defn syncer-running? [swap-index config]
+  (let [data-dir (data-dir swap-index config)]
+    (if data-dir (try (-> (apply clojure.java.shell/sh
+                                 [
+                                  (str (binary-dir config) "swap-cli")
+                                  "-d" data-dir
+                                  "info"
+                                  ])
+                          :err
+                          (= ""))
+                      (catch Exception e
+                        (println (:cause (Throwable->map e)))
+                        false))
+        false)))
 
 (defn -main [& args]
   (if (= (count args) 2)
