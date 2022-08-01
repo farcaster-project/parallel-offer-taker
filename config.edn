@@ -1,0 +1,5 @@
+{
+ :address-btc "changeToBTCAddress"
+ :address-xmr "changeToXMRAddress"
+ :data_dir_root "/example/path/to/data_dir_root"
+ }
