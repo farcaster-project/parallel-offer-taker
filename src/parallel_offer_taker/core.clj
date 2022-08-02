@@ -64,7 +64,7 @@
 
 (defn offer-take [swap-index config]
   (let [result (apply shell/sh [(binary-path config "swap-cli")
-                                "-d" (data-dir config swap-index)
+                                "-d" (data-dir swap-index config)
                                 "take" "-w"
                                 "--btc-addr" (:address-btc config)
                                 "--xmr-addr" (:address-xmr config)
@@ -205,8 +205,11 @@
       (println "offers: " @offers)
 
       ;; take offers
-      ;; (doall (map #(offer-take % config) (range min-swap-index (max (inc max-swap-index) (+ min-swap-index (count @offers))))))
+      (doall (map #(offer-take % config) (range min-swap-index (min max-swap-index (+ min-swap-index (dec (count @offers)))))))
 
+      ;; keep alive
+      (while true (do (Thread/sleep 60000)
+                 (println "running swaps")))
       )
     (println "required args: min-swap-index max-swap-index, supplied: " args))
   )
