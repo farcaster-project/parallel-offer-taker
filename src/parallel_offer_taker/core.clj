@@ -113,44 +113,64 @@
      "-d" data-dir
      ]))
 
-(def process-futures (atom {}))
-
-(defn launch-farcasterd [swap-index config]
-  (->> config
-       (farcasterd-launch-vec swap-index)
-       (apply shell/sh)
-       future
-       ;; NOTE: this still requires check that a future does not exist under given key yet
-       ((fn [future] (swap! process-futures (fn [m] (assoc m swap-index future)))))))
-
-(comment
-  (launch-farcasterd 0 (read-config "config.edn"))
-
-  (future-cancel (get @process-futures 0))
-  (future-cancelled? (get @process-futures 0))
-  (future-done? (get @process-futures 0))
-
-  (farcasterd-launch-vec 0 (read-config "config.edn")))
+(defn append-logging [swap-index config farcasterd-launch-vec]
+  (concat
+   farcasterd-launch-vec
+   ["1>"
+    (str (add-missing-trailing-slash (:data-dir-root config)) "farcasterd_" swap-index ".log")
+    "2>&1"
+    "&"
+    "\n"
+    "echo"
+    "$!"
+    ]))
 
 (defn farcasterd-process-id-exact [swap-index config]
-  (->> ["bash" "-c" (str "ps -ef | grep \"" (clojure.string/join " " (farcasterd-launch-vec swap-index config)) "$\" | grep -v grep | awk '{print $2}'"
-                         )]
-       (apply shell/sh)
-       :out
-       clojure.string/trim-newline
-       Integer/parseInt))
+  (try (->> ["bash" "-c" (str "ps -ef | grep \"" (clojure.string/join " " (farcasterd-launch-vec swap-index config)) "$\" | grep -v grep | awk '{print $2}'"
+                              )]
+            (apply shell/sh)
+            :out
+            clojure.string/trim-newline
+            Integer/parseInt)
+       ;; TODO: handle properly
+       (catch Exception _
+         (println "process does not exist"))))
 
 (defn farcasterd-process-id [swap-index]
-  (->> ["bash" "-c" (str "ps -ef | grep farcasterd | grep .data_dir_" swap-index "$ | grep -v grep | awk '{print $2}'"
-                         )]
-       (apply shell/sh)
-       :out
-       clojure.string/trim-newline
-       Integer/parseInt))
+  (try
+    (->> ["bash" "-c" (str "ps -ef | grep farcasterd | grep \".data_dir_" swap-index "$\" | grep -v grep | awk '{print $2}'"
+                           )]
+         (apply shell/sh)
+         :out
+         clojure.string/trim-newline
+         Integer/parseInt)
+    ;; TODO: handle properly
+    (catch Exception _
+      (println "process does not exist"))))
 
 (comment
   (farcasterd-process-id-exact 0 (read-config "config.edn"))
   (farcasterd-process-id 0))
+
+(def process-futures (atom {}))
+
+(defn launch-farcasterd [swap-index config]
+  (if (not  (or (contains? @process-futures swap-index)
+                (farcasterd-process-id-exact swap-index config)))
+    (->> config
+         (farcasterd-launch-vec swap-index)
+         (append-logging swap-index config)
+         (clojure.string/join " ")
+         (shell/sh "bash" "-c")
+         ;; future
+         ;; NOTE: this still requires check that a future does not exist under given key yet
+         ((fn [process-out] (swap! process-futures
+                                  (fn [m] (assoc m swap-index (-> process-out :out clojure.string/trim-newline Integer/parseInt)))))))
+    (println "swap " swap-index " already running")))
+
+(comment
+  (launch-farcasterd 0 (read-config "config.edn"))
+  (farcasterd-launch-vec 0 (read-config "config.edn")))
 
 (defn kill-farcasterd [swap-index config]
   (let [process-id (or (farcasterd-process-id-exact swap-index config)
@@ -170,18 +190,25 @@
           unresponsive-daemons (filter #(not (farcasterd-running? % config)) (range min-swap-index max-swap-index))]
       (println "swap index range: " min-swap-index max-swap-index)
       (println "config: " config)
+
+      ;; ensure all daemons running
       (if (empty? unresponsive-daemons)
         (do
           (println "all running -> can continue!")
-          (reset! offers (offers-get))
-          (println "offers: " @offers)
-          ;; (map #(offer-take % config) (range min-swap-index (max (inc max-swap-index) (+ min-swap-index (count @offers)))))
           )
         (do
-          (println "following daemons aren't responding, please get them running first:" unresponsive-daemons)
-          (map #(launch-farcasterd % config) unresponsive-daemons)))
+          (println "following daemons aren't responding, launching them first:" unresponsive-daemons)
+          (doall (map #(launch-farcasterd % config) unresponsive-daemons))))
+
+      ;; get offers
+      (reset! offers (offers-get))
+      (println "offers: " @offers)
+
+      ;; take offers
+      ;; (doall (map #(offer-take % config) (range min-swap-index (max (inc max-swap-index) (+ min-swap-index (count @offers))))))
+
       )
-    (println "required args: min-swap-index max-swap-index"))
+    (println "required args: min-swap-index max-swap-index, supplied: " args))
   )
 
 (comment (-main "0" "20"))
