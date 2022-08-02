@@ -13,11 +13,6 @@
    (map
     (fn [[amount address]] {:amount amount :address address})
     (map #(clojure.string/split % #" ")
-         ;; (clojure.string/split-lines (slurp "manual_funding/needs-funding-monero-2"))
-         ;; (clojure.string/split-lines (slurp "manual_funding/btc.payouts"))
-         ;; (clojure.string/split-lines (slurp "manual_funding/needs-funding-bitcoin"))
-         ;; (clojure.string/split-lines (slurp "manual_funding/needs-funding-bitcoin"))
-         ;; (clojure.string/split-lines (slurp "manual_funding/monerokon-btc"))
          (clojure.string/split-lines (slurp (str "manual_funding" "/" file)))))))
 
 (def outputs (map #(clojure.java.shell/sh "***REMOVED***" "--testnet" "payto" (:address %) (:amount %)) (rest (destination-array))))
