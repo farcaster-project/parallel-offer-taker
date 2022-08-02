@@ -54,6 +54,9 @@
 (defn farcaster-config-toml-file [config]
   (or (:farcaster-config-toml-file config) "~/.farcaster/farcaster.toml"))
 
+(comment (farcaster-config-toml-file (read-config "config.edn"))
+         (data-dir 0 (read-config "config.edn")))
+
 (defn help []
   (println (:out (apply shell/sh ["swap-cli" "help"]))))
 
@@ -100,7 +103,7 @@
                         false))
         false)))
 
-(farcasterd-running? 0 (read-config "config.edn"))
+(comment (farcasterd-running? 0 (read-config "config.edn")))
 
 (defn farcasterd-launch-vec [swap-index config]
   (let [data-dir (data-dir swap-index config)]
@@ -119,6 +122,15 @@
        future
        ;; NOTE: this still requires check that a future does not exist under given key yet
        ((fn [future] (swap! process-futures (fn [m] (assoc m swap-index future)))))))
+
+(comment
+  (launch-farcasterd 0 (read-config "config.edn"))
+
+  (future-cancel (get @process-futures 0))
+  (future-cancelled? (get @process-futures 0))
+  (future-done? (get @process-futures 0))
+
+  (farcasterd-launch-vec 0 (read-config "config.edn")))
 
 (defn farcasterd-process-id-exact [swap-index config]
   (->> ["bash" "-c" (str "ps -ef | grep \"" (clojure.string/join " " (farcasterd-launch-vec swap-index config)) "$\" | grep -v grep | awk '{print $2}'"
@@ -146,6 +158,10 @@
     (if process-id
       (shell/sh "kill" "-s" "SIGTERM" (str process-id))
       (throw (Exception. (str "no process for swap-index " swap-index))))))
+
+(comment
+  (launch-farcasterd 0 (read-config "config.edn"))
+  (kill-farcasterd 0 (read-config "config.edn")))
 
 (defn -main [& args]
   (if (= (count args) 2)
