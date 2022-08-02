@@ -229,8 +229,3 @@
   )
 
 (comment (-main "0" "20"))
-
-(comment
-  (reset! offers (offers-get))
-  (count @offers)
-  (def offers-cached @offers))
