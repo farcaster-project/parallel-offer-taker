@@ -1,5 +1,5 @@
 (ns parallel-offer-taker.manual-xmr
-  (:require [clj-http.client :as http]
+  (:require [clj-http.lite.client :as http]
             [clojure.data.json :as json]
             [clojure.string])
   (:gen-class))
