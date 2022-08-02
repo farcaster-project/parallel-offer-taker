@@ -37,7 +37,7 @@
 
 (def output-list (atom (destination-array)))
 
-(filter #(= (:address %) "***REMOVED***") (destination-array))
+(comment (filter #(= (:address %) "***REMOVED***") (destination-array)))
 
 (comment
   ;; curl http://localhost:18082/json_rpc -d '{"jsonrpc":"2.0","id":"0","method":"sweep_single","params":{"address":"74Jsocx8xbpTBEjm3ncKE5LBQbiJouyCDaGhgSiebpvNDXZnTAbW2CmUR5SsBeae2pNk9WMVuz6jegkC4krUyqRjA6VjoLD","ring_size":7,"unlock_time":0,"key_image":"a7834459ef795d2efb6f665d2fd758c8d9288989d8d4c712a68f8023f7804a5e","get_tx_keys":true}}' -H 'Content-Type: application/json'
@@ -108,7 +108,7 @@
 
 (comment (http/post "http://127.0.0.1:38085/json_rpc" {:body "{\"jsonrpc\":\"2.0\",\"id\":\"0\",\"method\":\"transfer\",\"params\":{\"destinations\":[{\"amount\":100000000000,\"address\":\"***REMOVED***\"},{\"amount\":200000000000,\"address\":\"***REMOVED***\"}],\"account_index\":0,\"subaddr_indices\":[0],\"priority\":0,\"ring_size\":7,\"get_tx_key\": true}}"}))
 
-(reset! output-list (destination-array))
+(comment (reset! output-list (destination-array)))
 
 (def response (atom nil))
 (comment (do
@@ -118,7 +118,7 @@
            ))
 
 (comment (:tx_hash (:result (json/read-str (:body (identity @response)) :key-fn keyword))))
-(count @output-list)
+(comment (count @output-list))
 
 (comment (monero-rpc (transfer [{:amount (biginteger (* 1E12 0.434427100000)) :address "***REMOVED***"}])))
 (comment (json/read-str (:body @response)))

@@ -172,12 +172,14 @@
       (println "config: " config)
       (if (empty? unresponsive-daemons)
         (do
-          (println "all running - can continue!")
-          ;; (reset! offers (offers-get))
-          ;; (println "offers: " @offers)
+          (println "all running -> can continue!")
+          (reset! offers (offers-get))
+          (println "offers: " @offers)
           ;; (map #(offer-take % config) (range min-swap-index (max (inc max-swap-index) (+ min-swap-index (count @offers)))))
           )
-        (println "following daemons aren't responding, please get them running first:" unresponsive-daemons))
+        (do
+          (println "following daemons aren't responding, please get them running first:" unresponsive-daemons)
+          (map #(launch-farcasterd % config) unresponsive-daemons)))
       )
     (println "required args: min-swap-index max-swap-index"))
   )

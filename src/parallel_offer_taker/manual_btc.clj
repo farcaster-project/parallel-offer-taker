@@ -34,8 +34,8 @@
 (def final-outputs (do (map #(electrum "broadcast" (:out (electrum "payto" (:address %) (:amount %))))
                             (take 10 (destination-array)))))
 
-(map #(electrum "broadcast" (:out (electrum "payto" (:address %) (:amount %))))
-     (take 10 (destination-array)))
+(comment (map #(electrum "broadcast" (:out (electrum "payto" (:address %) (:amount %))))
+              (take 10 (destination-array))))
 
 (def paytomany-output (electrum "paytomany" (json/write-str (map (fn [tuple] [(:address tuple) (:amount tuple)]) (destination-array))) "--feerate" "2"))
 
