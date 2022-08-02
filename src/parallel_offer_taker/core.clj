@@ -215,14 +215,15 @@
       (doall (map #(offer-take % config) (range min-swap-index (min max-swap-index (+ min-swap-index (dec (count @offers)))))))
 
       ;; keep alive
-      (while true (do (Thread/sleep 60000)
-                      (println
-                       "running swaps: "
-                       (count (apply concat (map
-                                      #(list-running-swaps % (read-config "config.edn"))
-                                      (range 0 19))))
+      (while true (do
+                    (println
+                     "running swaps: "
+                     (count (apply concat (map
+                                           #(list-running-swaps % (read-config "config.edn"))
+                                           (range min-swap-index (min max-swap-index (+ min-swap-index (dec (count @offers))))))))
 
-                       )))
+                     )
+                    (Thread/sleep 60000)))
       )
     (println "required args: min-swap-index max-swap-index, supplied: " args))
   )
