@@ -7,7 +7,8 @@
    clojure.java.io
    [clojure.java.shell :as shell]
    clojure.set
-   clojure.string)
+   clojure.string
+   [clj-yaml.core :as yaml])
   (:gen-class)
   )
 
@@ -70,6 +71,14 @@
                                 "--xmr-addr" (:address-xmr config)
                                 "--offer" (nth @offers (mod swap-index (count @offers)))])]
     (println [(:out result) (:err result)])
+    ))
+
+(defn list-running-swaps [swap-index config]
+  (let [result (apply shell/sh [(binary-path config "swap-cli")
+                                "-d" (data-dir swap-index config)
+                                "ls"])]
+    (-> (:out result)
+        (yaml/parse-string))
     ))
 
 (def simple (atom 0))
@@ -152,21 +161,19 @@
   (farcasterd-process-id-exact 0 (read-config "config.edn"))
   (farcasterd-process-id 0))
 
-(def process-futures (atom {}))
+(def process-ids (atom {}))
 
 (defn launch-farcasterd [swap-index config]
-  (if (not  (or (contains? @process-futures swap-index)
+  (if (not  (or (contains? @process-ids swap-index)
                 (farcasterd-process-id-exact swap-index config)))
     (->> config
          (farcasterd-launch-vec swap-index)
          (append-logging swap-index config)
          (clojure.string/join " ")
          (shell/sh "bash" "-c")
-         ;; future
-         ;; NOTE: this still requires check that a future does not exist under given key yet
-         ((fn [process-out] (swap! process-futures
+         ((fn [process-out] (swap! process-ids
                                   (fn [m] (assoc m swap-index (-> process-out :out clojure.string/trim-newline Integer/parseInt)))))))
-    (println "swap " swap-index " already running")))
+    (println "swap " swap-index " already running with pid " (get @process-ids swap-index))))
 
 (comment
   (launch-farcasterd 0 (read-config "config.edn"))
@@ -209,7 +216,13 @@
 
       ;; keep alive
       (while true (do (Thread/sleep 60000)
-                 (println "running swaps")))
+                      (println
+                       "running swaps: "
+                       (count (apply concat (map
+                                      #(list-running-swaps % (read-config "config.edn"))
+                                      (range 0 19))))
+
+                       )))
       )
     (println "required args: min-swap-index max-swap-index, supplied: " args))
   )
