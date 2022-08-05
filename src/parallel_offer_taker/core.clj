@@ -108,8 +108,7 @@
                                         "-d" (data-dir swap-index config)
                                         "restore-checkpoint" checkpoint]))
                      checkpoints)]
-    (clojure.pprint/pprint (map #(-> (or (:out %) (:err %))
-                                     (yaml/parse-string)) results))
+    (clojure.pprint/pprint (map #(or (-> (:out %) (yaml/parse-string)) (:err %)) results))
     ))
 
 (defn restore-or-offer-take [swap-index config]
