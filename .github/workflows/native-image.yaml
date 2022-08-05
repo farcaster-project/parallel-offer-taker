@@ -28,5 +28,5 @@ jobs:
       - name: Upload binary
         uses: actions/upload-artifact@v2
         with:
-          name: offer-taker-${{ matrix.os }}
-          path: offer-taker*
+          name: parallel-offer-taker-${{ matrix.os }}
+          path: parallel-offer-taker*

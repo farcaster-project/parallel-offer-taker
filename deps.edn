@@ -3,6 +3,7 @@
            :native-image
            {:main-opts ["-m" "clj.native-image" "parallel-offer-taker.core"
                         "--no-fallback"
+                        "--diagnostics-mode"
                         ;; "--initialize-at-build-time=clojure,clojure.core.server"
                         "--initialize-at-build-time"
                         "--enable-https"
