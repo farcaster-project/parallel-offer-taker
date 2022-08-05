@@ -3,7 +3,7 @@
    [clojure.data.json :as json]
    [clojure.java.shell :only [sh]]
    clojure.string)
-  (:gen-class))
+  )
 
 (def destination-file (atom "monerokon-btc"))
 
@@ -15,10 +15,10 @@
     (map #(clojure.string/split % #" ")
          (clojure.string/split-lines (slurp (str "manual_funding" "/" file)))))))
 
-(def outputs (map #(clojure.java.shell/sh "***REMOVED***" "--testnet" "payto" (:address %) (:amount %)) (rest (destination-array))))
+;; (def outputs (map #(clojure.java.shell/sh "***REMOVED***" "--testnet" "payto" (:address %) (:amount %)) (rest (destination-array))))
 
-(comment
-  (first outputs))
+;; (comment
+;;   (first outputs))
 
 (defn electrum [& args]
   (apply clojure.java.shell/sh (concat ["***REMOVED***" "--testnet"] args)))

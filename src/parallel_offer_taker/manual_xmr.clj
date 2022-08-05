@@ -2,7 +2,7 @@
   (:require [clj-http.lite.client :as http]
             [clojure.data.json :as json]
             [clojure.string])
-  (:gen-class))
+  )
 
 (def destination-file (atom "release_preparation"))
 
@@ -30,6 +30,7 @@
 
 (comment
   (/ (get-in (json/read-str (:body (http/post monero-wallet-rpc-url {:body get-balance}))) ["result" "balance"]) 1E12)
+  (get-in (json/read-str (:body (http/post monero-wallet-rpc-url {:body get-balance}))) ["result"])
   (/ (get-in (json/read-str (:body (http/post monero-wallet-rpc-url {:body get-balance}))) ["result" "unlocked_balance"]) 1E12))
 
 (comment
