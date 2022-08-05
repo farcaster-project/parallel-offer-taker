@@ -4,7 +4,7 @@
             [clojure.string])
   )
 
-(def destination-file (atom "release_preparation"))
+(def destination-file (atom "default-xmr"))
 
 (defn destination-array
   ([] (destination-array destination-file))

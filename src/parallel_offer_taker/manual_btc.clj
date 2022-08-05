@@ -5,7 +5,7 @@
    clojure.string)
   )
 
-(def destination-file (atom "monerokon-btc"))
+(def destination-file (atom "default-btc"))
 
 (defn destination-array
   ([] (destination-array @destination-file))
