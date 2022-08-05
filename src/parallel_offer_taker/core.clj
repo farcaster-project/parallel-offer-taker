@@ -13,6 +13,9 @@
   (:gen-class)
   )
 
+(println (shell/sh "pwd"))
+(println (shell/sh "ls" "-lah"))
+
 (defn offers-get []
   (-> (http/get "https://farcaster.dev/api/offers")
       :body
