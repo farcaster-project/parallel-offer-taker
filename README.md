@@ -16,7 +16,7 @@ use config.edn to configure:
 - `clj -M:native-image` or download binary from the latest action build from https://github.com/farcaster-project/parallel-offer-taker/actions/workflows/native-image.yaml?query=branch%3Amain to the directory containing `config.edn`
 - recommendation: first test whether your farcasterd works manually with the `:farcaster-config-toml-file`.
 - launch with `./parallel-offer-taker $SWAP_START_INDEX_INCLUSIVE $SWAP_END_INDEX_EXCLUSIVE`. 
-  i.e. `./parallel-offer-taker 0 50` would launch 50 swaps, with their respective `.data_dir_$SWAP_INDEX` enumerated from 0 - 49.
+  i.e. `./parallel-offer-taker 0 50` would launch 50 swaps, with their respective `.data_dir_$SWAP_INDEX` enumerated from 0 - 49. currently, these directories must be created ahead of time - the binary won't do it for you.
 - any farcasterd instance spawned that finishes all its running swaps will be killed automatically.
 - if you kill `parallel-offer-taker`, all swaps it spawned will die too.
 - if you relaunch `parallel-offer-taker` and any swaps in the range `$SWAP_START_INDEX_INCLUSIVE..$SWAP_END_INDEX_EXCLUSIVE` were left unfinished before, `parallel-offer-taker` will automatically restore their latest checkpoint
