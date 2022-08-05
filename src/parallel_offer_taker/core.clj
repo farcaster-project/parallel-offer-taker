@@ -1,7 +1,7 @@
 (ns parallel-offer-taker.core
   (:require
    [clj-http.lite.client :as http]
-   [clj-yaml.core :as yaml]
+   ;; [clj-yaml.core :as yaml]
    clojure.core
    [clojure.data.json :as json]
    clojure.edn
@@ -77,59 +77,59 @@
     (println [(:out result) (:err result)])
     ))
 
-(defn list-running-swaps [swap-index config]
-  (let [result (apply shell/sh [(binary-path config "swap-cli")
-                                "-d" (data-dir swap-index config)
-                                "ls"])]
-    (-> (:out result)
-        (yaml/parse-string))
-    ))
+;; (defn list-running-swaps [swap-index config]
+;;   (let [result (apply shell/sh [(binary-path config "swap-cli")
+;;                                 "-d" (data-dir swap-index config)
+;;                                 "ls"])]
+;;     (-> (:out result)
+;;         (yaml/parse-string))
+;;     ))
 
-(defn list-checkpoints [swap-index config]
-  (let [result (apply shell/sh [(binary-path config "swap-cli")
-                                "-d" (data-dir swap-index config)
-                                "list-checkpoints"])]
-    (-> (:out result)
-        (yaml/parse-string))
-    ))
+;; (defn list-checkpoints [swap-index config]
+;;   (let [result (apply shell/sh [(binary-path config "swap-cli")
+;;                                 "-d" (data-dir swap-index config)
+;;                                 "list-checkpoints"])]
+;;     (-> (:out result)
+;;         (yaml/parse-string))
+;;     ))
 
-(defn list-swaps [swap-index config]
-  (let [result (apply shell/sh [(binary-path config "swap-cli")
-                                "-d" (data-dir swap-index config)
-                                "list-swaps"])]
-    (-> (:out result)
-        (yaml/parse-string))
-    ))
+;; (defn list-swaps [swap-index config]
+;;   (let [result (apply shell/sh [(binary-path config "swap-cli")
+;;                                 "-d" (data-dir swap-index config)
+;;                                 "list-swaps"])]
+;;     (-> (:out result)
+;;         (yaml/parse-string))
+;;     ))
 
-(defn restore-all-checkpoints [swap-index config]
-  (let [checkpoints (map :swap_id (list-checkpoints swap-index config))
-        results (map (fn [checkpoint]
-                       (apply shell/sh [(binary-path config "swap-cli")
-                                        "-d" (data-dir swap-index config)
-                                        "restore-checkpoint" checkpoint]))
-                     checkpoints)]
-    (clojure.pprint/pprint (map #(-> (or (:out %) (:err %))
-                                     (yaml/parse-string)) results))
-    ))
+;; (defn restore-all-checkpoints [swap-index config]
+;;   (let [checkpoints (map :swap_id (list-checkpoints swap-index config))
+;;         results (map (fn [checkpoint]
+;;                        (apply shell/sh [(binary-path config "swap-cli")
+;;                                         "-d" (data-dir swap-index config)
+;;                                         "restore-checkpoint" checkpoint]))
+;;                      checkpoints)]
+;;     (clojure.pprint/pprint (map #(-> (or (:out %) (:err %))
+;;                                      (yaml/parse-string)) results))
+;;     ))
 
-(defn restore-or-offer-take [swap-index config]
-  (let [checkpoints (list-checkpoints swap-index config)]
-    (if (empty? checkpoints)
-      (do
-        (println "swap" swap-index ": taking offer")
-        (offer-take swap-index config)
-        )
-      (do
-        (println "swap" swap-index ": restoring:" (map :swap_id checkpoints))
-        (restore-all-checkpoints swap-index config)
-        )
-      ))
-  )
+;; (defn restore-or-offer-take [swap-index config]
+;;   (let [checkpoints (list-checkpoints swap-index config)]
+;;     (if (empty? checkpoints)
+;;       (do
+;;         (println "swap" swap-index ": taking offer")
+;;         (offer-take swap-index config)
+;;         )
+;;       (do
+;;         (println "swap" swap-index ": restoring:" (map :swap_id checkpoints))
+;;         (restore-all-checkpoints swap-index config)
+;;         )
+;;       ))
+;;   )
 
-(comment (->> "config.edn"
-              read-config
-              (list-checkpoints 0)
-              (map :swap_id)))
+;; (comment (->> "config.edn"
+;;               read-config
+;;               (list-checkpoints 0)
+;;               (map :swap_id)))
 
 (def simple (atom 0))
 (comment (reset! simple 200))
@@ -244,6 +244,18 @@
   (launch-farcasterd 0 (read-config "config.edn"))
   (kill-farcasterd 0 (read-config "config.edn")))
 
+;; (defn progress [swap-index config]
+;;   (let [swaps (list-swaps swap-index config)
+;;         results (map (fn [swap]
+;;                       (apply shell/sh [(binary-path config "swap-cli")
+;;                                        "-d" (data-dir swap-index config)
+;;                                        "progress" swap]))
+;;                     swaps)]
+;;     (if (seq results)
+;;       (clojure.pprint/pprint (map #(-> (or (:out %) (:err %))
+;;                                        (yaml/parse-string)) results)))
+;;     ))
+
 (defn -main [& args]
   (if (= (count args) 2)
     (let [[min-swap-index max-swap-index] (map #(Integer/parseInt %) args)
@@ -266,7 +278,7 @@
       (println "offers: " @offers)
 
       ;; unless can restore past swap(s), take offer(s)
-      (doall (map #(restore-or-offer-take % config) (range min-swap-index (min max-swap-index (+ min-swap-index (dec (count @offers)))))))
+      ;; (doall (map #(restore-or-offer-take % config) (range min-swap-index (min max-swap-index (+ min-swap-index (dec (count @offers)))))))
 
       ;; keep alive
       (while true (do
@@ -274,18 +286,18 @@
                     (doall (map clojure.pprint/pprint
                                 [(java.util.Date.)
                                  "running swaps:"
-                                 (let [running-swaps (map
-                                                      (fn [idx] {:farcaster-id idx :swap-ids (list-running-swaps idx (read-config "config.edn"))})
-                                                      (range min-swap-index (min max-swap-index (+ min-swap-index (dec (count @offers))))))
-                                       swaps-to-terminate (filter #(and (empty? (:swap-ids %)) (farcasterd-running? (:farcaster-id %) config)) running-swaps)]
-                                   (doall (map #(kill-farcasterd (:farcaster-id %) config) swaps-to-terminate))
-                                   {
-                                    :details (filter #(seq (:swap-ids %)) running-swaps)
-                                    :count
-                                    (->> running-swaps
-                                         (map :swap-ids)
-                                         (apply concat)
-                                         count)})
+                                 ;; (let [running-swaps (map
+                                 ;;                      (fn [idx] {:farcaster-id idx :swap-ids (list-running-swaps idx (read-config "config.edn"))})
+                                 ;;                      (range min-swap-index (min max-swap-index (+ min-swap-index (dec (count @offers))))))
+                                 ;;       swaps-to-terminate (filter #(and (empty? (:swap-ids %)) (farcasterd-running? (:farcaster-id %) config)) running-swaps)]
+                                 ;;   (doall (map #(kill-farcasterd (:farcaster-id %) config) swaps-to-terminate))
+                                 ;;   {
+                                 ;;    :details (filter #(seq (:swap-ids %)) running-swaps)
+                                 ;;    :count
+                                 ;;    (->> running-swaps
+                                 ;;         (map :swap-ids)
+                                 ;;         (apply concat)
+                                 ;;         count)})
                                  ]
                                 ))
                     ))
@@ -293,15 +305,4 @@
     (println "required args: min-swap-index max-swap-index, supplied: " args))
   )
 
-(defn progress [swap-index config]
-  (let [swaps (list-swaps swap-index config)
-        results (map (fn [swap]
-                      (apply shell/sh [(binary-path config "swap-cli")
-                                       "-d" (data-dir swap-index config)
-                                       "progress" swap]))
-                    swaps)]
-    (if (seq results)
-      (clojure.pprint/pprint (map #(-> (or (:out %) (:err %))
-                                       (yaml/parse-string)) results)))
-    ))
 (comment (-main "0" "20"))
