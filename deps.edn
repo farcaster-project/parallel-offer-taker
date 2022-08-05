@@ -1,7 +1,9 @@
 {:paths ["src"]
  :aliases {
+           :dev {:paths ["src", "src-dev"]}
            :native-image
-           {:main-opts ["-m" "clj.native-image" "parallel-offer-taker.core"
+           {
+            :main-opts ["-m" "clj.native-image" "parallel-offer-taker.core"
                         "--no-fallback"
                         "--diagnostics-mode"
                         ;; "--initialize-at-build-time=clojure,clojure.core.server"

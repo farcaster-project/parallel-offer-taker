@@ -1,4 +1,4 @@
-(ns parallel-offer-taker.manual-btc
+(ns manual-funders.manual-btc
   (:require
    [clojure.data.json :as json]
    [clojure.java.shell :only [sh]]

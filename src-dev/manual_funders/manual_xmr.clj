@@ -1,4 +1,4 @@
-(ns parallel-offer-taker.manual-xmr
+(ns manual-funders.manual-xmr
   (:require [clj-http.lite.client :as http]
             [clojure.data.json :as json]
             [clojure.string])
