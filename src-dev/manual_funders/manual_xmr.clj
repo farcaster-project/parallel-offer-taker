@@ -1,10 +1,11 @@
-(ns parallel-offer-taker.manual-xmr
+(ns manual-funders.manual-xmr
   (:require [clj-http.lite.client :as http]
             [clojure.data.json :as json]
             [clojure.string])
-  (:gen-class))
+  (:gen-class)
+  )
 
-(def destination-file (atom "release_preparation"))
+(def destination-file (atom "default-xmr"))
 
 (defn destination-array
   ([] (destination-array destination-file))
@@ -12,9 +13,6 @@
    (map
     (fn [[amount address]] {:amount (bigint (+ (* (Float/parseFloat amount) 1E12) 1E10)) :address address})
     (map #(clojure.string/split % #" ")
-         ;; (clojure.string/split-lines (slurp "manual_funding/needs-funding-monero-2"))
-         ;; (clojure.string/split-lines (slurp "manual_funding/needs-funding-monero"))
-         ;; (clojure.string/split-lines (slurp "manual_funding/monerokon-xmr"))
          (clojure.string/split-lines (slurp (str "manual_funding" "/" @destination-file)))
          ))))
 
@@ -30,12 +28,13 @@
 
 (comment
   (/ (get-in (json/read-str (:body (http/post monero-wallet-rpc-url {:body get-balance}))) ["result" "balance"]) 1E12)
+  (get-in (json/read-str (:body (http/post monero-wallet-rpc-url {:body get-balance}))) ["result"])
   (/ (get-in (json/read-str (:body (http/post monero-wallet-rpc-url {:body get-balance}))) ["result" "unlocked_balance"]) 1E12))
 
 (comment
   (get-in (json/read-str (:body (http/post monero-wallet-rpc-url {:body get-balance}))) ["result" "per_subaddress" 0 "address"]))
 
-(def output-list (atom (destination-array)))
+(def output-list (atom '()))
 
 (comment (filter #(= (:address %) "***REMOVED***") (destination-array)))
 
@@ -117,12 +116,13 @@
            [(count @output-list) (json/read-str (:body @response))]
            ))
 
-(reset! output-list (destination-array))
-(do
-  (reset! response (http/post monero-wallet-rpc-url {:body (json/write-str (transfer (take 15 @output-list)))}))
-  (swap! output-list #(drop 15 %))
-  [(count @output-list) (json/read-str (:body @response))]
-  )
+(comment
+  (reset! output-list (destination-array))
+  (do
+    (reset! response (http/post monero-wallet-rpc-url {:body (json/write-str (transfer (take 15 @output-list)))}))
+    (swap! output-list #(drop 15 %))
+    [(count @output-list) (json/read-str (:body @response))]
+    ))
 
 (comment (:tx_hash (:result (json/read-str (:body (identity @response)) :key-fn keyword))))
 (comment (count @output-list))

@@ -13,6 +13,9 @@
   (:gen-class)
   )
 
+;; (println (shell/sh "pwd"))
+;; (println (shell/sh "ls" "-lah"))
+
 (defn offers-get []
   (-> (http/get "https://farcaster.dev/api/offers")
       :body
@@ -241,6 +244,18 @@
   (launch-farcasterd 0 (read-config "config.edn"))
   (kill-farcasterd 0 (read-config "config.edn")))
 
+(defn progress [swap-index config]
+  (let [swaps (list-swaps swap-index config)
+        results (map (fn [swap]
+                      (apply shell/sh [(binary-path config "swap-cli")
+                                       "-d" (data-dir swap-index config)
+                                       "progress" swap]))
+                    swaps)]
+    (if (seq results)
+      (clojure.pprint/pprint (map #(-> (or (:out %) (:err %))
+                                       (yaml/parse-string)) results)))
+    ))
+
 (defn -main [& args]
   (if (= (count args) 2)
     (let [[min-swap-index max-swap-index] (map #(Integer/parseInt %) args)
@@ -290,15 +305,4 @@
     (println "required args: min-swap-index max-swap-index, supplied: " args))
   )
 
-(defn progress [swap-index config]
-  (let [swaps (list-swaps swap-index config)
-        results (map (fn [swap]
-                      (apply shell/sh [(binary-path config "swap-cli")
-                                       "-d" (data-dir swap-index config)
-                                       "progress" swap]))
-                    swaps)]
-    (if (seq results)
-      (clojure.pprint/pprint (map #(-> (or (:out %) (:err %))
-                                       (yaml/parse-string)) results)))
-    ))
 (comment (-main "0" "20"))
