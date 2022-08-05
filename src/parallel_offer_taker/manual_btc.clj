@@ -3,11 +3,10 @@
    [clojure.data.json :as json]
    [clojure.java.shell :only [sh]]
    clojure.string)
+  (:gen-class)
   )
 
 (def destination-file (atom "default-btc"))
-
-(println (clojure.java.shell/sh "pwd"))
 
 (defn destination-array
   ([] (destination-array @destination-file))
@@ -17,26 +16,15 @@
     (map #(clojure.string/split % #" ")
          (clojure.string/split-lines (slurp (str "manual_funding" "/" file)))))))
 
-;; (def outputs (map #(clojure.java.shell/sh "***REMOVED***" "--testnet" "payto" (:address %) (:amount %)) (rest (destination-array))))
-
-;; (comment
-;;   (first outputs))
-
 (defn electrum [& args]
   (apply clojure.java.shell/sh (concat ["***REMOVED***" "--testnet"] args)))
-
-(def final-outputs (map #(electrum "broadcast" (:out (electrum "payto" (:address %) (:amount %))))
-                         (rest (rest (destination-array)))))
-
-(def final-outputs (do (map #(electrum "broadcast" (:out (electrum "payto" (:address %) (:amount %))))
-                            (take 10 (destination-array)))))
 
 (comment (map #(electrum "broadcast" (:out (electrum "payto" (:address %) (:amount %))))
               (take 10 (destination-array))))
 
-(def paytomany-output (electrum "paytomany" (json/write-str (map (fn [tuple] [(:address tuple) (:amount tuple)]) (destination-array))) "--feerate" "2"))
+(defn paytomany-output [destination-array] (electrum "paytomany" (json/write-str (map (fn [tuple] [(:address tuple) (:amount tuple)]) destination-array)) "--feerate" "2"))
 
-(comment (electrum "broadcast" (:out paytomany-output)))
+(comment (electrum "broadcast" (:out (paytomany-output (destination-array)))))
 
 (comment (println (map #(clojure.java.shell/sh "***REMOVED***" "--testnet" "broadcast" %) (map :out outputs))))
 
