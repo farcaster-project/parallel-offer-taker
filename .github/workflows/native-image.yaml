@@ -26,7 +26,7 @@ jobs:
         run: clojure -M:native-image
 
       - name: Upload binary
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: parallel-offer-taker-${{ matrix.os }}
           path: parallel-offer-taker*
