@@ -1,0 +1,32 @@
+name: GraalVM Native Image builds
+on: [push, pull_request]
+jobs:
+  build:
+    name: OfferTaker on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: graalvm/setup-graalvm@v1
+        with:
+          version: '22.1.0'
+          java-version: '11'
+          components: 'native-image'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install clojure tools
+        uses: DeLaGuardo/setup-clojure@3.7
+        with:
+          cli: 1.10.3.1075 # Clojure CLI based on tools.deps
+
+      - name: NativeImage for Clojure project
+        run: clojure -M:native-image
+
+      # - name: Upload binary
+      #   uses: actions/upload-artifact@v2
+      #   with:
+      #     name: offer-taker-${{ matrix.os }}
+      #     path: offer-taker*
