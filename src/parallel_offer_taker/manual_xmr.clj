@@ -4,7 +4,7 @@
             [clojure.string])
   (:gen-class))
 
-(def destination-file (atom "monerokon-xmr"))
+(def destination-file (atom "release_preparation"))
 
 (defn destination-array
   ([] (destination-array destination-file))
@@ -112,10 +112,17 @@
 
 (def response (atom nil))
 (comment (do
-           (reset! response (http/post "http://127.0.0.1:38085/json_rpc" {:body (json/write-str (transfer (take 15 @output-list)))}))
+           (reset! response (http/post monero-wallet-rpc-url {:body (json/write-str (transfer (take 15 @output-list)))}))
            (swap! output-list #(drop 15 %))
            [(count @output-list) (json/read-str (:body @response))]
            ))
+
+(reset! output-list (destination-array))
+(do
+  (reset! response (http/post monero-wallet-rpc-url {:body (json/write-str (transfer (take 15 @output-list)))}))
+  (swap! output-list #(drop 15 %))
+  [(count @output-list) (json/read-str (:body @response))]
+  )
 
 (comment (:tx_hash (:result (json/read-str (:body (identity @response)) :key-fn keyword))))
 (comment (count @output-list))
