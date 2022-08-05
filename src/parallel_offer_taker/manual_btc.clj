@@ -7,6 +7,8 @@
 
 (def destination-file (atom "default-btc"))
 
+(println (clojure.java.shell/sh "pwd"))
+
 (defn destination-array
   ([] (destination-array @destination-file))
   ([file]
