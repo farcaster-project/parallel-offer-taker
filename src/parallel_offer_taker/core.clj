@@ -119,7 +119,7 @@
         (offer-take swap-index config)
         )
       (do
-        (println "swap" swap-index ": restoring:" (map :swap_id checkpoints))
+        (println "swap" (str swap-index ": restoring:") (map :swap_id checkpoints))
         (restore-all-checkpoints swap-index config)
         )
       ))
@@ -174,7 +174,7 @@
 (defn append-logging [swap-index config farcasterd-launch-vec]
   (concat
    farcasterd-launch-vec
-   ["1>"
+   ["1>>"
     (str (add-missing-trailing-slash (:data-dir-root config)) "farcasterd_" swap-index ".log")
     "2>&1"
     "&"
