@@ -285,7 +285,7 @@
                               [(java.util.Date.)
                                "running swaps:"
                                (let [running-swaps (map
-                                                    (fn [idx] {:farcaster-id idx :swap-ids (list-running-swaps idx (read-config "config.edn"))})
+                                                    (fn [idx] {:farcaster-id idx :swap-ids (list-running-swaps idx config)})
                                                     (range min-swap-index (min max-swap-index (+ min-swap-index (dec (count @offers))))))
                                      swaps-to-terminate (filter #(and (empty? (:swap-ids %)) (farcasterd-running? (:farcaster-id %) config)) running-swaps)]
                                  (doall (map #(kill-farcasterd (:farcaster-id %) config) swaps-to-terminate))
