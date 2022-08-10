@@ -131,7 +131,7 @@
               (list-checkpoints 0)
               (map :swap_id)))
 
-(def simple (atom 0))
+(comment  (def simple (atom 0)))
 (comment (reset! simple 200))
 
 (comment (let [count 20
@@ -360,6 +360,3 @@
       (exit (if ok? 0 1) exit-message)
       (runner start-range end-range options)
       )))
-
-(let [args '("--config" "config.edn" "0" "1")]
-  (apply -main args))
