@@ -206,20 +206,23 @@
             (clojure.string/split (:monero-wallet-rpc-options config) #" ")))
 
 (defn append-logging [swap-index config binary-launch-vec]
-  (concat
-   binary-launch-vec
-   ["1>>"
-    (str (add-missing-trailing-slash (:data-dir-root config)) (first binary-launch-vec) "_" swap-index ".log")
-    "2>&1"
-    "&"
-    "\n"
-    "echo"
-    "$!"
-    ]))
+  (let [binary-name (-> binary-launch-vec
+                        first
+                        (clojure.string/split #"/")
+                        last)]
+    (concat
+     binary-launch-vec
+     ["1>>"
+      (str (add-missing-trailing-slash (:data-dir-root config)) binary-name "_" swap-index ".log")
+      "2>&1"
+      "&"
+      "\n"
+      "echo"
+      "$!"
+      ])))
 
 (defn farcasterd-process-id-exact [swap-index config]
-  (try (->> ["bash" "-c" (str "ps -ef | grep \"" (string/join " " (farcasterd-launch-vec swap-index config)) "$\" | grep -v grep | awk '{print $2}'"
-                              )]
+  (try (->> ["bash" "-c" (str "ps -ef | grep \"" (string/join " " (farcasterd-launch-vec swap-index config)) "$\" | grep -v grep | awk '{print $2}'")]
             (apply shell/sh)
             :out
             string/trim-newline
