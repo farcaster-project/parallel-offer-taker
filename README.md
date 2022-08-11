@@ -4,13 +4,15 @@ launches multiple instances of farcaster to take offers from farcaster.dev.
 a lot of functionality is not exposed yet, but quite trivial to do - just open up issues/PRs.
 
 ## configuration
-use config.edn to configure:
+use a configuration `.edn` file to configure:
 
 - `:address-btc` is the equivalent of the `--btc-addr` option for `swap-cli make` and `swap-cli take`
 - `:address-xmr` is the equivalent of the `--xmr-addr` option for `swap-cli make` and `swap-cli take`
 - `:data-dir-root` points to the directory where your `.data_dir_$SWAP_INDEX` dirs will live
 - `:farcaster-binaries-path` points to the directory containing `farcasterd` and `swap-cli`
 - `:farcaster-config-toml-file` points to the `.toml` file containing your configuration
+
+A sample configuration file can be found [here](./config-sample.edn). The config file's location is passed to `parallel-offer-taker` with the `--config` flag, else assumed to be `./config.edn`.
 
 ## usage
 - `clj -M:native-image` or download binary from the latest action build from https://github.com/farcaster-project/parallel-offer-taker/actions/workflows/native-image.yaml?query=branch%3Amain to the directory containing `config.edn`

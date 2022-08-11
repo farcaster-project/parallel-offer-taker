@@ -9,7 +9,8 @@
    [clojure.java.shell :as shell]
    clojure.pprint
    clojure.set
-   clojure.string)
+   [clojure.string :as string]
+   clojure.tools.cli)
   (:gen-class)
   )
 
@@ -108,8 +109,7 @@
                                         "-d" (data-dir swap-index config)
                                         "restore-checkpoint" checkpoint]))
                      checkpoints)]
-    (clojure.pprint/pprint (map #(-> (or (:out %) (:err %))
-                                     (yaml/parse-string)) results))
+    (clojure.pprint/pprint (map #(or (-> (:out %) (yaml/parse-string)) (:err %)) results))
     ))
 
 (defn restore-or-offer-take [swap-index config]
@@ -120,7 +120,7 @@
         (offer-take swap-index config)
         )
       (do
-        (println "swap" swap-index ": restoring:" (map :swap_id checkpoints))
+        (println "swap" (str swap-index ": restoring:") (map :swap_id checkpoints))
         (restore-all-checkpoints swap-index config)
         )
       ))
@@ -131,7 +131,7 @@
               (list-checkpoints 0)
               (map :swap_id)))
 
-(def simple (atom 0))
+(comment  (def simple (atom 0)))
 (comment (reset! simple 200))
 
 (comment (let [count 20
@@ -175,7 +175,7 @@
 (defn append-logging [swap-index config farcasterd-launch-vec]
   (concat
    farcasterd-launch-vec
-   ["1>"
+   ["1>>"
     (str (add-missing-trailing-slash (:data-dir-root config)) "farcasterd_" swap-index ".log")
     "2>&1"
     "&"
@@ -185,11 +185,11 @@
     ]))
 
 (defn farcasterd-process-id-exact [swap-index config]
-  (try (->> ["bash" "-c" (str "ps -ef | grep \"" (clojure.string/join " " (farcasterd-launch-vec swap-index config)) "$\" | grep -v grep | awk '{print $2}'"
+  (try (->> ["bash" "-c" (str "ps -ef | grep \"" (string/join " " (farcasterd-launch-vec swap-index config)) "$\" | grep -v grep | awk '{print $2}'"
                               )]
             (apply shell/sh)
             :out
-            clojure.string/trim-newline
+            string/trim-newline
             Integer/parseInt)
        ;; TODO: handle properly
        (catch Exception _
@@ -201,7 +201,7 @@
                            )]
          (apply shell/sh)
          :out
-         clojure.string/trim-newline
+         string/trim-newline
          Integer/parseInt)
     ;; TODO: handle properly
     (catch Exception _
@@ -219,9 +219,9 @@
     (->> config
          (farcasterd-launch-vec swap-index)
          (append-logging swap-index config)
-         (clojure.string/join " ")
+         (string/join " ")
          (shell/sh "bash" "-c")
-         ((comp #(Integer/parseInt %) clojure.string/trim-newline :out))
+         ((comp #(Integer/parseInt %) string/trim-newline :out))
          ((fn [pid] (do (swap! process-ids
                                       (fn [m] (assoc m swap-index pid)))
                                (println "launched process" pid "for swap-index" swap-index)))))
@@ -256,53 +256,107 @@
                                        (yaml/parse-string)) results)))
     ))
 
-(defn -main [& args]
-  (if (= (count args) 2)
-    (let [[min-swap-index max-swap-index] (map #(Integer/parseInt %) args)
-          config (read-config "config.edn")
-          unresponsive-daemons (filter #(not (farcasterd-running? % config)) (range min-swap-index max-swap-index))]
-      (println "swap index range: " min-swap-index max-swap-index)
-      (println "config: " config)
+(defn runner [min-swap-index max-swap-index options]
+  (let [config (:config options)
+        unresponsive-daemons (filter #(not (farcasterd-running? % config)) (range min-swap-index max-swap-index))]
+    (println "swap index range:" min-swap-index max-swap-index)
+    (println "config:" config)
 
-      ;; ensure all daemons running
-      (if (empty? unresponsive-daemons)
-        (do
-          (println "all running -> can continue!")
-          )
-        (do
-          (println "following daemons aren't responding, launching them first:" unresponsive-daemons)
-          (doall (map #(launch-farcasterd % config) unresponsive-daemons))))
+    ;; ensure all daemons running
+    (if (empty? unresponsive-daemons)
+      (do
+        (println "all running -> can continue!")
+        )
+      (do
+        (println "following daemons aren't responding, launching them first:" unresponsive-daemons)
+        (doall (map #(launch-farcasterd % config) unresponsive-daemons))))
 
-      ;; get offers
-      (reset! offers (offers-get))
-      (println "offers: " @offers)
+    ;; get offers
+    (reset! offers (offers-get))
+    (println "offers: " @offers)
 
-      ;; unless can restore past swap(s), take offer(s)
-      (doall (map #(restore-or-offer-take % config) (range min-swap-index (min max-swap-index (+ min-swap-index (dec (count @offers)))))))
+    ;; unless can restore past swap(s), take offer(s)
+    (doall (map #(restore-or-offer-take % config) (range min-swap-index (min max-swap-index (+ min-swap-index (dec (count @offers)))))))
 
-      ;; keep alive
-      (while true (do
-                    (Thread/sleep 60000)
-                    (doall (map clojure.pprint/pprint
-                                [(java.util.Date.)
-                                 "running swaps:"
-                                 (let [running-swaps (map
-                                                      (fn [idx] {:farcaster-id idx :swap-ids (list-running-swaps idx (read-config "config.edn"))})
-                                                      (range min-swap-index (min max-swap-index (+ min-swap-index (dec (count @offers))))))
-                                       swaps-to-terminate (filter #(and (empty? (:swap-ids %)) (farcasterd-running? (:farcaster-id %) config)) running-swaps)]
-                                   (doall (map #(kill-farcasterd (:farcaster-id %) config) swaps-to-terminate))
-                                   {
-                                    :details (filter #(seq (:swap-ids %)) running-swaps)
-                                    :count
-                                    (->> running-swaps
-                                         (map :swap-ids)
-                                         (apply concat)
-                                         count)})
-                                 ]
-                                ))
-                    ))
-      )
-    (println "required args: min-swap-index max-swap-index, supplied: " args))
+    ;; keep alive
+    (while true (do
+                  (Thread/sleep 60000)
+                  (doall (map clojure.pprint/pprint
+                              [(java.util.Date.)
+                               "running swaps:"
+                               (let [running-swaps (map
+                                                    (fn [idx] {:farcaster-id idx :swap-ids (list-running-swaps idx config)})
+                                                    (range min-swap-index (min max-swap-index (+ min-swap-index (dec (count @offers))))))
+                                     swaps-to-terminate (filter #(and (empty? (:swap-ids %)) (farcasterd-running? (:farcaster-id %) config)) running-swaps)]
+                                 (doall (map #(kill-farcasterd (:farcaster-id %) config) swaps-to-terminate))
+                                 {
+                                  :details (filter #(seq (:swap-ids %)) running-swaps)
+                                  :count
+                                  (->> running-swaps
+                                       (map :swap-ids)
+                                       (apply concat)
+                                       count)})
+                               ]
+                              ))
+                  ))
+    )
   )
 
-(comment (-main "0" "20"))
+(def cli-options
+  [["-c" "--config CONFIG" "Config file"
+    :default "config.edn"
+    :parse-fn #(read-config %)]
+   ;; ["-v" nil "Verbosity level"
+   ;;  :id :verbosity
+   ;;  :default 0
+   ;;  :update-fn inc]
+   ["-h" "--help"]])
+
+(defn usage [options-summary]
+  (->> ["Farcaster Parallel Offer Taker Launcher"
+        ""
+        "Usage: parallel-offer-taker [options] start-index end-index"
+        "Positional args:"
+        "   start-index Lowest index of swaps to be launched"
+        "   end-index   Highest index of swaps to be launched (exclusive)"
+        "Options:"
+        options-summary
+        ""]
+       (string/join \newline)))
+
+(defn error-msg [errors]
+  (str "The following errors occurred while parsing your command:\n\n"
+       (string/join \newline errors)))
+
+(defn validate-args
+  "Validate command line arguments. Either return a map indicating the program
+  should exit (with an error message, and optional ok status), or a map
+  indicating the action the program should take and the options provided."
+  [args]
+  (let [{:keys [options arguments errors summary]} (clojure.tools.cli/parse-opts args cli-options)]
+    (cond
+      (:help options)                   ; help => exit OK with usage summary
+      {:exit-message (usage summary) :ok? true}
+      errors                         ; errors => exit with description of errors
+      {:exit-message (error-msg errors)}
+      ;; custom validation on arguments
+      (and (= 2 (count arguments))
+           (every? (fn [arg] (every? #(Character/isDigit %) arg)) arguments))
+      {:start-range (Integer/parseInt (first arguments))
+       :end-range (Integer/parseInt (second arguments))
+       :options options}
+      :else                ; failed custom validation => exit with usage summary
+      {:exit-message (usage summary)})))
+
+(defn exit [status msg]
+  (println msg)
+  ;; (println "exiting with status" status)
+  (System/exit status)
+  )
+
+(defn -main [& args]
+  (let [{:keys [start-range end-range options exit-message ok?]} (validate-args args)]
+    (if exit-message
+      (exit (if ok? 0 1) exit-message)
+      (runner start-range end-range options)
+      )))
