@@ -341,7 +341,11 @@
       {:exit-message (error-msg errors)}
       ;; custom validation on arguments
       (and (= 2 (count arguments))
-           (every? (fn [arg] (every? #(Character/isDigit %) arg)) arguments))
+           (every? (fn [arg] (try (Integer/parseInt arg)
+                                 (catch Exception e
+                                   ;; TODO: cleaner return - cause alone here not sufficient, and rest too verbose
+                                   (println "failure parsing" arg "as integer:" e))))
+                   arguments))
       {:start-range (Integer/parseInt (first arguments))
        :end-range (Integer/parseInt (second arguments))
        :options options}
