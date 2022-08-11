@@ -98,7 +98,7 @@
     (map #(if (clojure.core/re-find #"^farcasterd.auto_funding*" %)
             %
             (clojure.string/replace %
-             #"monero_rpc_wallet = (\D+)(\d+)" (str "monero_rpc_wallet = $1" (monero-wallet-rpc-port swap-index config)))
+                                    #"monero_rpc_wallet = (\D+)(\d+)" (str "monero_rpc_wallet = $1" (monero-wallet-rpc-port swap-index config)))
             ) data)
     (clojure.string/join "[" data)
     (spit (swap-specific-toml-path swap-index config) data)
