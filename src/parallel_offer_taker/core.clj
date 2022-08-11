@@ -65,10 +65,21 @@
   (or (:monero-wallet-rpc-binary config)
       "monero-wallet-rpc"))
 
-(defn farcaster-config-toml-file [config]
+(defn farcaster-template-config-toml-file [config]
   (or (:farcaster-config-toml-file config) "~/.farcaster/farcaster.toml"))
 
-(comment (farcaster-config-toml-file (read-config "config.edn"))
+(defn swap-specific-toml-path [swap-index config]
+  (str (add-missing-trailing-slash (:data-dir-root config)) "farcasterd_" swap-index ".toml"))
+
+(defn spit-swap-specific-toml [swap-index config]
+  (->  (slurp (farcaster-template-config-toml-file config))
+       (clojure.string/replace
+        #"monero_rpc_wallet = (\D+)(\d+)" (str "monero_rpc_wallet = $1" (monero-wallet-rpc-port swap-index config)))
+       (#(spit (swap-specific-toml-path swap-index config) %))
+       )
+  (println "overwrote" (swap-specific-toml-path swap-index config)))
+
+(comment (farcaster-template-config-toml-file (read-config "config.edn"))
          (farcasterd-data-dir 0 (read-config "config.edn")))
 
 (defn help []
@@ -177,9 +188,12 @@
     "method" "get_version",
     }))
 
+(defn monero-wallet-rpc-port [swap-index config]
+  (+ swap-index (:monero-wallet-rpc-start-rpc-port config)))
+
 (defn monero-wallet-rpc-url [swap-index config]
-  (let [rpc-port (+ swap-index (:monero-wallet-rpc-start-rpc-port config))]
-   (str "http://127.0.0.1:" rpc-port "/json_rpc")))
+  (let [rpc-port (monero-wallet-rpc-port swap-index config)]
+    (str "http://127.0.0.1:" rpc-port "/json_rpc")))
 
 (defn monero-wallet-rpc-running? [swap-index config]
   (let [rpc-url (monero-wallet-rpc-url swap-index config)]
@@ -194,8 +208,7 @@
   (let [data-dir (farcasterd-data-dir swap-index config)]
     [
      (str (farcaster-binary-dir config) "farcasterd")
-     "-c" (farcaster-config-toml-file config)
-     "--monero-wallet-rpc" (monero-wallet-rpc-url swap-index config)
+     "-c" (swap-specific-toml-path swap-index config)
      "-d" data-dir
      ]))
 
