@@ -304,7 +304,7 @@
 
 (def cli-options
   [["-c" "--config CONFIG" "Config file"
-    :default "config.edn"
+    :default (read-config "config-sample.edn")
     :parse-fn #(read-config %)]
    ;; ["-v" nil "Verbosity level"
    ;;  :id :verbosity
