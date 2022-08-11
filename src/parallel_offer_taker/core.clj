@@ -377,6 +377,7 @@
   (let [{:keys [start-range end-range options exit-message ok?]} (validate-args args)]
     (if exit-message
       (exit (if ok? 0 1) exit-message)
+      #_{:clj-kondo/ignore [:missing-else-branch]}
       (if (validate-config options)
         (runner start-range end-range options))
       )))
