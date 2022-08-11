@@ -348,6 +348,25 @@
       :else                ; failed custom validation => exit with usage summary
       {:exit-message (usage summary)})))
 
+(defn valid-shell-call? [args]
+  (let [ret (try (apply shell/sh args)
+                 (catch Exception e
+                   {:exit 1
+                    :err (:cause (Throwable->map e))}))]
+    (if (= 0 (:exit ret))
+      true
+      (do (println "call" args "failed with:" (:err ret))
+          false))))
+
+(defn validate-config [options]
+  (let [config (:config options)]
+    (keys (:config options))
+    (every? identity
+            [(valid-shell-call? [(farcaster-binary-path config "swap-cli") "help"])
+             (valid-shell-call? [(farcaster-binary-path config "farcasterd") "--help"])
+             (valid-shell-call? [(or (:monero-wallet-rpc-binary config) "monero-wallet-rpc") "--help"])])
+    ))
+
 (defn exit [status msg]
   (println msg)
   ;; (println "exiting with status" status)
@@ -358,5 +377,6 @@
   (let [{:keys [start-range end-range options exit-message ok?]} (validate-args args)]
     (if exit-message
       (exit (if ok? 0 1) exit-message)
-      (runner start-range end-range options)
+      (if (validate-config options)
+        (runner start-range end-range options))
       )))
