@@ -344,6 +344,9 @@
     (println "swap index range:" min-swap-index max-swap-index)
     (println "config:" config)
 
+    (println "creating config per swap")
+    (doall (map #(spit-swap-specific-toml % config) (range min-swap-index max-swap-index)))
+
     ;; ensure all daemons running
     (if (empty? unresponsive-daemons)
       (do
@@ -351,7 +354,6 @@
         )
       (do
         (println "following daemons aren't responding, launching them first:" unresponsive-daemons)
-        (doall (map #(spit-swap-specific-toml % config) unresponsive-daemons))
         (doall (map #(launch-process :farcasterd % config) unresponsive-daemons))))
 
     ;; ensure all monero-wallet-rpcs are listening
