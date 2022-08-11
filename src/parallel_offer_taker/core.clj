@@ -187,11 +187,11 @@
              ]
             (clojure.string/split (:monero-wallet-rpc-options config) #" "))))
 
-(defn append-logging [swap-index config farcasterd-launch-vec]
+(defn append-logging [swap-index config binary-launch-vec]
   (concat
-   farcasterd-launch-vec
+   binary-launch-vec
    ["1>>"
-    (str (add-missing-trailing-slash (:data-dir-root config)) "farcasterd_" swap-index ".log")
+    (str (add-missing-trailing-slash (:data-dir-root config)) (first binary-launch-vec) "_" swap-index ".log")
     "2>&1"
     "&"
     "\n"
