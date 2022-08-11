@@ -170,6 +170,21 @@
                         false))
         false)))
 
+(def get-version
+  (json/write-str
+   {"jsonrpc" "2.0",
+    "id" "0",
+    "method" "get_version",
+    }))
+
+(defn monero-wallet-rpc-running? [swap-index config]
+  (let [rpc-port (+ swap-index (:monero-wallet-rpc-start-rpc-port config))
+        rpc-url (str "http://127.0.0.1:" rpc-port "/json_rpc")]
+    (try (some? (:body (http/get rpc-url {:body get-version})))
+         (catch Exception e
+           (println (:cause (Throwable->map e)))
+           false))))
+
 (comment (farcasterd-running? 0 (read-config "config.edn")))
 
 (defn farcasterd-launch-vec [swap-index config]
@@ -236,6 +251,19 @@
                 (farcasterd-process-id-exact swap-index config)))
     (->> config
          (farcasterd-launch-vec swap-index)
+         (append-logging swap-index config)
+         (string/join " ")
+         (shell/sh "bash" "-c")
+         ((comp #(Integer/parseInt %) string/trim-newline :out))
+         ((fn [pid] (do (swap! process-ids
+                                      (fn [m] (assoc m swap-index pid)))
+                               (println "launched process" pid "for swap-index" swap-index)))))
+    (println "swap" swap-index "already running with pid" (get @process-ids swap-index))))
+
+(defn launch-monero-wallet-rpc [swap-index config]
+  (if (not (farcasterd-process-id-exact swap-index config))
+    (->> config
+         (monero-wallet-rpc-launch-vec swap-index)
          (append-logging swap-index config)
          (string/join " ")
          (shell/sh "bash" "-c")
