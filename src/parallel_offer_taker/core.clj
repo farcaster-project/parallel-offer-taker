@@ -57,6 +57,10 @@
 (defn farcaster-binary-path [config binary-name]
   (str (farcaster-binary-dir config) binary-name))
 
+(defn monero-wallet-rpc-binary [config]
+  (or (:monero-wallet-rpc-binary config)
+      "monero-wallet-rpc"))
+
 (defn farcaster-config-toml-file [config]
   (or (:farcaster-config-toml-file config) "~/.farcaster/farcaster.toml"))
 
@@ -171,6 +175,17 @@
      "-c" (farcaster-config-toml-file config)
      "-d" data-dir
      ]))
+
+(defn monero-wallet-rpc-launch-vec [swap-index config]
+  (let [data-dir-root (:data-dir-root config)]
+    (concat [
+             (monero-wallet-rpc-binary config)
+             "--rpc-bind-port" (+
+                                (:monero-wallet-rpc-start-rpc-port config)
+                                swap-index)
+             "--wallet-dir" (str data-dir-root "syncer_wallets_" swap-index)
+             ]
+            (clojure.string/split (:monero-wallet-rpc-options config) #" "))))
 
 (defn append-logging [swap-index config farcasterd-launch-vec]
   (concat
