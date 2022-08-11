@@ -93,11 +93,16 @@
   (str (add-missing-trailing-slash (:data-dir-root config)) "farcasterd_" swap-index ".toml"))
 
 (defn spit-swap-specific-toml [swap-index config]
-  (->  (slurp (farcaster-template-config-toml-file config))
-       (clojure.string/replace
-        #"monero_rpc_wallet = (\D+)(\d+)" (str "monero_rpc_wallet = $1" (monero-wallet-rpc-port swap-index config)))
-       (#(spit (swap-specific-toml-path swap-index config) %))
-       )
+  (as-> (slurp (farcaster-template-config-toml-file config)) data
+    (clojure.string/split data #"\[")
+    (map #(if (clojure.core/re-find #"^farcasterd.auto_funding*" %)
+            %
+            (clojure.string/replace %
+             #"monero_rpc_wallet = (\D+)(\d+)" (str "monero_rpc_wallet = $1" (monero-wallet-rpc-port swap-index config)))
+            ) data)
+    (clojure.string/join "[" data)
+    (spit (swap-specific-toml-path swap-index config) data)
+    )
   (println "overwrote" (swap-specific-toml-path swap-index config)))
 
 (comment (farcaster-template-config-toml-file (read-config "config.edn"))
