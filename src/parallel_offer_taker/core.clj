@@ -274,7 +274,7 @@
 (def process-ids (atom {}))
 
 (defn launch-process [process swap-index config]
-  (if (not  (or (contains? @process-ids swap-index)
+  (if (not  (or (contains? @process-ids (keyword (str process "-" swap-index)))
                 (process-id-exact process swap-index config)))
     (->> config
          ((process-launch-vec process) swap-index)
