@@ -355,7 +355,9 @@
         )
       (do
         (println "following rpc daemons aren't responding, launching them first:" unresponsive-xmr-wallet-rpcs)
-        (doall (map #(launch-process :monero-wallet-rpc % config) unresponsive-xmr-wallet-rpcs))))
+        (doall
+         (map #(spit-swap-specific-toml % config) unresponsive-xmr-wallet-rpcs)
+         (map #(launch-process :monero-wallet-rpc % config) unresponsive-xmr-wallet-rpcs))))
 
     ;; get offers
     (reset! offers (offers-get))
