@@ -4,4 +4,5 @@
  :data-dir-root nil
  :farcaster-binaries-path nil
  :farcaster-config-toml-file nil
+ :monero-wallet-rpc-binary nil
  }
