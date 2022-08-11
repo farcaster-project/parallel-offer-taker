@@ -351,6 +351,7 @@
         )
       (do
         (println "following daemons aren't responding, launching them first:" unresponsive-daemons)
+        (doall (map #(spit-swap-specific-toml % config) unresponsive-daemons))
         (doall (map #(launch-process :farcasterd % config) unresponsive-daemons))))
 
     ;; ensure all monero-wallet-rpcs are listening
@@ -360,8 +361,7 @@
         )
       (do
         (println "following rpc daemons aren't responding, launching them first:" unresponsive-xmr-wallet-rpcs)
-        (doall (map #(spit-swap-specific-toml % config) unresponsive-xmr-wallet-rpcs)
-)
+
         (doall
          (map #(launch-process :monero-wallet-rpc % config) unresponsive-xmr-wallet-rpcs))))
 
