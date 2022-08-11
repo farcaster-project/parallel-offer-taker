@@ -51,11 +51,11 @@
       (catch Exception e
         (println e)))))
 
-(defn binary-dir [config]
+(defn farcaster-binary-dir [config]
   (or (add-missing-trailing-slash (:farcaster-binaries-path config)) "~/.cargo/bin/"))
 
-(defn binary-path [config binary-name]
-  (str (binary-dir config) binary-name))
+(defn farcaster-binary-path [config binary-name]
+  (str (farcaster-binary-dir config) binary-name))
 
 (defn farcaster-config-toml-file [config]
   (or (:farcaster-config-toml-file config) "~/.farcaster/farcaster.toml"))
@@ -69,7 +69,7 @@
 (comment (help))
 
 (defn offer-take [swap-index config]
-  (let [result (apply shell/sh [(binary-path config "swap-cli")
+  (let [result (apply shell/sh [(farcaster-binary-path config "swap-cli")
                                 "-d" (data-dir swap-index config)
                                 "take" "-w"
                                 "--btc-addr" (:address-btc config)
@@ -79,7 +79,7 @@
     ))
 
 (defn list-running-swaps [swap-index config]
-  (let [result (apply shell/sh [(binary-path config "swap-cli")
+  (let [result (apply shell/sh [(farcaster-binary-path config "swap-cli")
                                 "-d" (data-dir swap-index config)
                                 "ls"])]
     (-> (:out result)
@@ -87,7 +87,7 @@
     ))
 
 (defn list-checkpoints [swap-index config]
-  (let [result (apply shell/sh [(binary-path config "swap-cli")
+  (let [result (apply shell/sh [(farcaster-binary-path config "swap-cli")
                                 "-d" (data-dir swap-index config)
                                 "list-checkpoints"])]
     (-> (:out result)
@@ -95,7 +95,7 @@
     ))
 
 (defn list-swaps [swap-index config]
-  (let [result (apply shell/sh [(binary-path config "swap-cli")
+  (let [result (apply shell/sh [(farcaster-binary-path config "swap-cli")
                                 "-d" (data-dir swap-index config)
                                 "list-swaps"])]
     (-> (:out result)
@@ -105,7 +105,7 @@
 (defn restore-all-checkpoints [swap-index config]
   (let [checkpoints (map :swap_id (list-checkpoints swap-index config))
         results (map (fn [checkpoint]
-                       (apply shell/sh [(binary-path config "swap-cli")
+                       (apply shell/sh [(farcaster-binary-path config "swap-cli")
                                         "-d" (data-dir swap-index config)
                                         "restore-checkpoint" checkpoint]))
                      checkpoints)]
@@ -151,7 +151,7 @@
   (let [data-dir (data-dir swap-index config)]
     (if data-dir (try (-> (apply shell/sh
                                  [
-                                  (str (binary-dir config) "swap-cli")
+                                  (str (farcaster-binary-dir config) "swap-cli")
                                   "-d" data-dir
                                   "info"
                                   ])
@@ -167,7 +167,7 @@
 (defn farcasterd-launch-vec [swap-index config]
   (let [data-dir (data-dir swap-index config)]
     [
-     (str (binary-dir config) "farcasterd")
+     (str (farcaster-binary-dir config) "farcasterd")
      "-c" (farcaster-config-toml-file config)
      "-d" data-dir
      ]))
@@ -247,7 +247,7 @@
 (defn progress [swap-index config]
   (let [swaps (list-swaps swap-index config)
         results (map (fn [swap]
-                      (apply shell/sh [(binary-path config "swap-cli")
+                      (apply shell/sh [(farcaster-binary-path config "swap-cli")
                                        "-d" (data-dir swap-index config)
                                        "progress" swap]))
                     swaps)]
