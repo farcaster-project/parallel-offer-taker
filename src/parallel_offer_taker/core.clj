@@ -306,10 +306,10 @@
   [["-c" "--config CONFIG" "Config file"
     :default "config.edn"
     :parse-fn #(read-config %)]
-   ["-v" nil "Verbosity level"
-    :id :verbosity
-    :default 0
-    :update-fn inc]
+   ;; ["-v" nil "Verbosity level"
+   ;;  :id :verbosity
+   ;;  :default 0
+   ;;  :update-fn inc]
    ["-h" "--help"]])
 
 (defn usage [options-summary]
