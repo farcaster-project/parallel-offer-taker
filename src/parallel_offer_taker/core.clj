@@ -221,15 +221,22 @@
       "$!"
       ])))
 
-(defn farcasterd-process-id-exact [swap-index config]
-  (try (->> ["bash" "-c" (str "ps -ef | grep \"" (string/join " " (farcasterd-launch-vec swap-index config)) "$\" | grep -v grep | awk '{print $2}'")]
+(defn process-launch-vec [process]
+  (case process
+    :farcasterd farcasterd-launch-vec
+    :monero-wallet-rpc monero-wallet-rpc-launch-vec))
+
+(defn process-id-exact [process swap-index config]
+  (try (->> ["bash" "-c" (str "ps -ef | grep \"" (string/join " "
+                                                              ((process-launch-vec process) swap-index config)) "$\" | grep -v grep | awk '{print $2}'"
+                              )]
             (apply shell/sh)
             :out
             string/trim-newline
             Integer/parseInt)
        ;; TODO: handle properly
        (catch Exception _
-         (println "process for" swap-index "does not exist"))))
+         (println "process" process "for" swap-index "does not exist"))))
 
 (defn farcasterd-process-id [swap-index]
   (try
@@ -244,27 +251,27 @@
       (println "process for" swap-index "does not exist"))))
 
 (comment
-  (farcasterd-process-id-exact 0 (read-config "config.edn"))
+  (process-id-exact :farcasterd 0 (read-config "config.edn"))
   (farcasterd-process-id 0))
 
 (def process-ids (atom {}))
 
-(defn launch-farcasterd [swap-index config]
+(defn launch-process [process swap-index config]
   (if (not  (or (contains? @process-ids swap-index)
-                (farcasterd-process-id-exact swap-index config)))
+                (process-id-exact process swap-index config)))
     (->> config
-         (farcasterd-launch-vec swap-index)
+         ((process-launch-vec process) swap-index)
          (append-logging swap-index config)
          (string/join " ")
          (shell/sh "bash" "-c")
          ((comp #(Integer/parseInt %) string/trim-newline :out))
          ((fn [pid] (do (swap! process-ids
-                                      (fn [m] (assoc m swap-index pid)))
-                               (println "launched process" pid "for swap-index" swap-index)))))
-    (println "swap" swap-index "already running with pid" (get @process-ids swap-index))))
+                              (fn [m] (assoc m (keyword (str process "-" swap-index)) pid)))
+                       (println "launched process" pid "for swap-index" swap-index)))))
+    (println process swap-index "already running with pid" (get @process-ids swap-index))))
 
 (defn launch-monero-wallet-rpc [swap-index config]
-  (if (not (farcasterd-process-id-exact swap-index config))
+  (if (not (process-id-exact :farcasterd swap-index config))
     (->> config
          (monero-wallet-rpc-launch-vec swap-index)
          (append-logging swap-index config)
@@ -277,11 +284,11 @@
     (println "swap" swap-index "already running with pid" (get @process-ids swap-index))))
 
 (comment
-  (launch-farcasterd 0 (read-config "config.edn"))
+  (launch-process :farcasterd 0 (read-config "config.edn"))
   (farcasterd-launch-vec 0 (read-config "config.edn")))
 
 (defn kill-farcasterd [swap-index config]
-  (let [process-id (or (farcasterd-process-id-exact swap-index config)
+  (let [process-id (or (process-id-exact :farcasterd swap-index config)
                        (farcasterd-process-id swap-index))]
     (if process-id
       (do (shell/sh "kill" "-s" "SIGTERM" (str process-id))
@@ -290,16 +297,16 @@
       (throw (Exception. (str "no process for swap-index " swap-index))))))
 
 (comment
-  (launch-farcasterd 0 (read-config "config.edn"))
+  (launch-process :farcasterd 0 (read-config "config.edn"))
   (kill-farcasterd 0 (read-config "config.edn")))
 
 (defn progress [swap-index config]
   (let [swaps (list-swaps swap-index config)
         results (map (fn [swap]
-                      (apply shell/sh [(farcaster-binary-path config "swap-cli")
-                                       "-d" (farcasterd-data-dir swap-index config)
-                                       "progress" swap]))
-                    swaps)]
+                       (apply shell/sh [(farcaster-binary-path config "swap-cli")
+                                        "-d" (farcasterd-data-dir swap-index config)
+                                        "progress" swap]))
+                     swaps)]
     (if (seq results)
       (clojure.pprint/pprint (map #(-> (or (:out %) (:err %))
                                        (yaml/parse-string)) results)))
@@ -307,18 +314,28 @@
 
 (defn runner [min-swap-index max-swap-index options]
   (let [config (:config options)
-        unresponsive-daemons (filter #(not (farcasterd-running? % config)) (range min-swap-index max-swap-index))]
+        unresponsive-daemons (filter #(not (farcasterd-running? % config)) (range min-swap-index max-swap-index))
+        unresponsive-xmr-wallet-rpcs (filter #(not (monero-wallet-rpc-running? % config)) (range min-swap-index max-swap-index))]
     (println "swap index range:" min-swap-index max-swap-index)
     (println "config:" config)
 
     ;; ensure all daemons running
     (if (empty? unresponsive-daemons)
       (do
-        (println "all running -> can continue!")
+        (println "all farcasterd instances running -> can continue!")
         )
       (do
         (println "following daemons aren't responding, launching them first:" unresponsive-daemons)
-        (doall (map #(launch-farcasterd % config) unresponsive-daemons))))
+        (doall (map #(launch-process :farcasterd % config) unresponsive-daemons))))
+
+    ;; ensure all monero-wallet-rpcs are listening
+    (if (empty? unresponsive-xmr-wallet-rpcs)
+      (do
+        (println "all monero-wallet-rpc instances running -> can continue!")
+        )
+      (do
+        (println "following rpc daemons aren't responding, launching them first:" unresponsive-xmr-wallet-rpcs)
+        (doall (map #(launch-process :monero-wallet-rpc % config) unresponsive-xmr-wallet-rpcs))))
 
     ;; get offers
     (reset! offers (offers-get))
