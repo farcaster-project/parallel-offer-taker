@@ -42,7 +42,7 @@
     (str path "/")
     path))
 
-(defn data-dir [swap-index {:keys [data-dir-root]}]
+(defn farcasterd-data-dir [swap-index {:keys [data-dir-root]}]
   (let [data-dir (str (add-missing-trailing-slash data-dir-root) ".data_dir_" swap-index)]
     (try
       (if (.exists (clojure.java.io/as-file data-dir))
@@ -50,6 +50,10 @@
         (throw (Exception. (str data-dir " does not exist"))))
       (catch Exception e
         (println e)))))
+
+(defn monero-wallet-rpc-data-dir [swap-index {:keys [data-dir-root]}]
+  (let [data-dir (str (add-missing-trailing-slash data-dir-root) "syncer_wallets_" swap-index)]
+    data-dir))
 
 (defn farcaster-binary-dir [config]
   (or (add-missing-trailing-slash (:farcaster-binaries-path config)) "~/.cargo/bin/"))
@@ -65,7 +69,7 @@
   (or (:farcaster-config-toml-file config) "~/.farcaster/farcaster.toml"))
 
 (comment (farcaster-config-toml-file (read-config "config.edn"))
-         (data-dir 0 (read-config "config.edn")))
+         (farcasterd-data-dir 0 (read-config "config.edn")))
 
 (defn help []
   (println (:out (apply shell/sh ["swap-cli" "help"]))))
@@ -74,7 +78,7 @@
 
 (defn offer-take [swap-index config]
   (let [result (apply shell/sh [(farcaster-binary-path config "swap-cli")
-                                "-d" (data-dir swap-index config)
+                                "-d" (farcasterd-data-dir swap-index config)
                                 "take" "-w"
                                 "--btc-addr" (:address-btc config)
                                 "--xmr-addr" (:address-xmr config)
@@ -84,7 +88,7 @@
 
 (defn list-running-swaps [swap-index config]
   (let [result (apply shell/sh [(farcaster-binary-path config "swap-cli")
-                                "-d" (data-dir swap-index config)
+                                "-d" (farcasterd-data-dir swap-index config)
                                 "ls"])]
     (-> (:out result)
         (yaml/parse-string))
@@ -92,7 +96,7 @@
 
 (defn list-checkpoints [swap-index config]
   (let [result (apply shell/sh [(farcaster-binary-path config "swap-cli")
-                                "-d" (data-dir swap-index config)
+                                "-d" (farcasterd-data-dir swap-index config)
                                 "list-checkpoints"])]
     (-> (:out result)
         (yaml/parse-string))
@@ -100,7 +104,7 @@
 
 (defn list-swaps [swap-index config]
   (let [result (apply shell/sh [(farcaster-binary-path config "swap-cli")
-                                "-d" (data-dir swap-index config)
+                                "-d" (farcasterd-data-dir swap-index config)
                                 "list-swaps"])]
     (-> (:out result)
         (yaml/parse-string))
@@ -110,7 +114,7 @@
   (let [checkpoints (map :swap_id (list-checkpoints swap-index config))
         results (map (fn [checkpoint]
                        (apply shell/sh [(farcaster-binary-path config "swap-cli")
-                                        "-d" (data-dir swap-index config)
+                                        "-d" (farcasterd-data-dir swap-index config)
                                         "restore-checkpoint" checkpoint]))
                      checkpoints)]
     (clojure.pprint/pprint (map #(or (-> (:out %) (yaml/parse-string)) (:err %)) results))
@@ -152,7 +156,7 @@
   (pmap offer-take (range 20)))
 
 (defn farcasterd-running? [swap-index config]
-  (let [data-dir (data-dir swap-index config)]
+  (let [data-dir (farcasterd-data-dir swap-index config)]
     (if data-dir (try (-> (apply shell/sh
                                  [
                                   (str (farcaster-binary-dir config) "swap-cli")
@@ -169,7 +173,7 @@
 (comment (farcasterd-running? 0 (read-config "config.edn")))
 
 (defn farcasterd-launch-vec [swap-index config]
-  (let [data-dir (data-dir swap-index config)]
+  (let [data-dir (farcasterd-data-dir swap-index config)]
     [
      (str (farcaster-binary-dir config) "farcasterd")
      "-c" (farcaster-config-toml-file config)
@@ -177,15 +181,14 @@
      ]))
 
 (defn monero-wallet-rpc-launch-vec [swap-index config]
-  (let [data-dir-root (:data-dir-root config)]
-    (concat [
+  (concat [
              (monero-wallet-rpc-binary config)
              "--rpc-bind-port" (+
                                 (:monero-wallet-rpc-start-rpc-port config)
                                 swap-index)
-             "--wallet-dir" (str data-dir-root "syncer_wallets_" swap-index)
+             "--wallet-dir" (monero-wallet-rpc-data-dir swap-index config)
              ]
-            (clojure.string/split (:monero-wallet-rpc-options config) #" "))))
+            (clojure.string/split (:monero-wallet-rpc-options config) #" ")))
 
 (defn append-logging [swap-index config binary-launch-vec]
   (concat
@@ -263,7 +266,7 @@
   (let [swaps (list-swaps swap-index config)
         results (map (fn [swap]
                       (apply shell/sh [(farcaster-binary-path config "swap-cli")
-                                       "-d" (data-dir swap-index config)
+                                       "-d" (farcasterd-data-dir swap-index config)
                                        "progress" swap]))
                     swaps)]
     (if (seq results)
