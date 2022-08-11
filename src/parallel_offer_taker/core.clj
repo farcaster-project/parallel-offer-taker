@@ -177,9 +177,12 @@
     "method" "get_version",
     }))
 
+(defn monero-wallet-rpc-url [swap-index config]
+  (let [rpc-port (+ swap-index (:monero-wallet-rpc-start-rpc-port config))]
+   (str "http://127.0.0.1:" rpc-port "/json_rpc")))
+
 (defn monero-wallet-rpc-running? [swap-index config]
-  (let [rpc-port (+ swap-index (:monero-wallet-rpc-start-rpc-port config))
-        rpc-url (str "http://127.0.0.1:" rpc-port "/json_rpc")]
+  (let [rpc-url (monero-wallet-rpc-url swap-index config)]
     (try (some? (:body (http/get rpc-url {:body get-version})))
          (catch Exception e
            (println (:cause (Throwable->map e)))
@@ -192,6 +195,7 @@
     [
      (str (farcaster-binary-dir config) "farcasterd")
      "-c" (farcaster-config-toml-file config)
+     "--monero-wallet-rpc" (monero-wallet-rpc-url swap-index config)
      "-d" data-dir
      ]))
 
