@@ -7,11 +7,14 @@
 
 (def destination-file (atom "default-xmr"))
 
+(defn fixed-float-to-big-int [ff]
+  ((fn [[head tail]] (+ (* (bigint head) 1E12) (bigint tail))) (clojure.string/split ff #"\.")))
+
 (defn destination-array
   ([] (destination-array @destination-file))
   ([destination-file]
    (map
-    (fn [[amount address]] {:amount (bigint (* (Float/parseFloat amount) 1E12)) :address address})
+    (fn [[amount address]] {:amount (fixed-float-to-big-int amount) :address address})
     (map #(clojure.string/split % #" ")
          (clojure.string/split-lines (slurp (str "manual_funding" "/" destination-file)))
          ))))
