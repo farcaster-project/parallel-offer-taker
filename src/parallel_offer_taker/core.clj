@@ -382,14 +382,18 @@
                                "running swaps:"
                                (let [running-swaps (map
                                                     (fn [idx] {:farcaster-id idx :swap-ids (list-running-swaps idx config)})
-                                                    (range min-swap-index (min max-swap-index (+ min-swap-index (dec (count @offers))))))
+                                                    (range min-swap-index max-swap-index))
                                      idle-farcasterds (filter #(and (empty? (:swap-ids %)) (farcasterd-running? (:farcaster-id %) config)) running-swaps)]
                                  (if (:sustain options)
                                    ;; if user wants to sustain swap quantity, take another offer
-                                   (do (reset! offers (offers-get))
-                                       (doall (map #(restore-or-offer-take (:farcaster-id %) config) idle-farcasterds)))
+                                   (do
+                                     (println "retrieving new offers")
+                                     (reset! offers (offers-get))
+                                     (doall (map #(restore-or-offer-take (:farcaster-id %) config) idle-farcasterds)))
                                    ;; else kill the daemon
-                                   (doall (map #(kill-farcasterd (:farcaster-id %) config) idle-farcasterds)))
+                                   (do
+                                     (println "killing daemon")
+                                     (doall (map #(kill-farcasterd (:farcaster-id %) config) idle-farcasterds))))
                                  {
                                   :details (filter #(seq (:swap-ids %)) running-swaps)
                                   :count
