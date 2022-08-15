@@ -8,12 +8,12 @@
 (def destination-file (atom "default-xmr"))
 
 (defn fixed-float-to-big-int [ff]
-  ((fn [[head tail]] (+ (* (bigint head) 1E12)
-                       (bigint (apply str tail (repeat (- 12 (count tail)) "0")))))
+  ((fn [[head tail]] (bigint (+ (* (bigint head) 1E12)
+                               (bigint (apply str tail (repeat (- 12 (count tail)) "0"))))))
    (clojure.string/split ff #"\.")))
 
 (comment
-  (= 3.2358865E11
+  (= 323588650000
      (fixed-float-to-big-int "0.323588650000")
      (fixed-float-to-big-int "0.32358865000")
      (fixed-float-to-big-int "0.32358865")))
