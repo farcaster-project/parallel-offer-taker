@@ -373,15 +373,16 @@
     (println "offers: " @offers)
 
     ;; unless can restore past swap(s), take offer(s)
-    (doall (map #(restore-or-offer-take % config) (range min-swap-index (min max-swap-index (+ min-swap-index (dec (count @offers)))))))
+    ;; (doall (map #(restore-or-offer-take % config) (range min-swap-index (min max-swap-index (+ min-swap-index (dec (count @offers)))))))
 
     ;; keep alive
     (while true (do
-                  (Thread/sleep 30000)
+                  (Thread/sleep 10000)
                   (let [running-swaps (map
                                        (fn [idx] {:farcaster-id idx :swap-ids (list-running-swaps idx config)})
                                        (range min-swap-index max-swap-index))
-                        idle-farcasterds (filter #(and (empty? (:swap-ids %)) (farcasterd-running? (:farcaster-id %) config)) running-swaps)]
+                        idle-farcasterds (filter #(and (empty? (:swap-ids %)) ;; (farcasterd-running? (:farcaster-id %) config)
+                                                       ) running-swaps)]
                     (if (:sustain options)
                       ;; if user wants to sustain swap quantity, take another offer
                        (do
