@@ -120,6 +120,7 @@
                                 "--btc-addr" (:address-btc config)
                                 "--xmr-addr" (:address-xmr config)
                                 "--offer" (nth @offers (mod swap-index (count @offers)))])]
+    (println "took offer for" swap-index)
     (println [(:out result) (:err result)])
     ))
 
@@ -376,33 +377,35 @@
 
     ;; keep alive
     (while true (do
-                  (Thread/sleep 60000)
-                  (doall (map clojure.pprint/pprint
-                              [(java.util.Date.)
-                               "running swaps:"
-                               (let [running-swaps (map
-                                                    (fn [idx] {:farcaster-id idx :swap-ids (list-running-swaps idx config)})
-                                                    (range min-swap-index max-swap-index))
-                                     idle-farcasterds (filter #(and (empty? (:swap-ids %)) (farcasterd-running? (:farcaster-id %) config)) running-swaps)]
-                                 (if (:sustain options)
-                                   ;; if user wants to sustain swap quantity, take another offer
-                                   (do
-                                     (println "retrieving new offers")
-                                     (reset! offers (offers-get))
-                                     (doall (map #(restore-or-offer-take (:farcaster-id %) config) idle-farcasterds)))
-                                   ;; else kill the daemon
-                                   (do
-                                     (println "killing daemon")
-                                     (doall (map #(kill-farcasterd (:farcaster-id %) config) idle-farcasterds))))
+                  (Thread/sleep 30000)
+                  (let [running-swaps (map
+                                       (fn [idx] {:farcaster-id idx :swap-ids (list-running-swaps idx config)})
+                                       (range min-swap-index max-swap-index))
+                        idle-farcasterds (filter #(and (empty? (:swap-ids %)) (farcasterd-running? (:farcaster-id %) config)) running-swaps)]
+                    (if (:sustain options)
+                      ;; if user wants to sustain swap quantity, take another offer
+                       (do
+                        (println "idle-farcasterds:" idle-farcasterds)
+                        (println "retrieving new offers")
+                        (reset! offers (offers-get))
+                        (doall (map #(offer-take (:farcaster-id %) config) idle-farcasterds)))
+                      ;; else kill the daemon
+                      (do
+                        (println "killing daemon")
+                        (doall (map #(kill-farcasterd (:farcaster-id %) config) idle-farcasterds))))
+
+                    (doall (map clojure.pprint/pprint
+                                [(java.util.Date.)
+                                 "running swaps:"
                                  {
                                   :details (filter #(seq (:swap-ids %)) running-swaps)
                                   :count
                                   (->> running-swaps
                                        (map :swap-ids)
                                        (apply concat)
-                                       count)})
-                               ]
-                              ))
+                                       count)}
+                                 ]
+                                )))
                   ))
     )
   )
