@@ -377,7 +377,7 @@
 
     ;; keep alive
     (while true (do
-                  (Thread/sleep 10000)
+                  (Thread/sleep 60000)
                   (let [running-swaps (map
                                        (fn [idx] {:farcaster-id idx :swap-ids (list-running-swaps idx config)})
                                        (range min-swap-index max-swap-index))
@@ -400,6 +400,7 @@
                                  "running swaps:"
                                  {
                                   :details (filter #(seq (:swap-ids %)) running-swaps)
+                                  :farcasterd-running (map #(farcasterd-running? (:farcaster-id %) config) running-swaps)
                                   :count
                                   (->> running-swaps
                                        (map :swap-ids)
