@@ -373,7 +373,7 @@
     (println "offers: " @offers)
 
     ;; unless can restore past swap(s), take offer(s)
-    ;; (doall (map #(restore-or-offer-take % config) (range min-swap-index (min max-swap-index (+ min-swap-index (dec (count @offers)))))))
+    (doall (map #(restore-or-offer-take % config) (range min-swap-index (min max-swap-index (+ min-swap-index (dec (count @offers)))))))
 
     ;; keep alive
     (while true (do
