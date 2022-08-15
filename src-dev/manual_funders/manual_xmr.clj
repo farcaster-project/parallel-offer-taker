@@ -11,7 +11,7 @@
   ([] (destination-array @destination-file))
   ([destination-file]
    (map
-    (fn [[amount address]] {:amount (bigint (+ (* (Float/parseFloat amount) 1E12) 1E10)) :address address})
+    (fn [[amount address]] {:amount (bigint (* (Float/parseFloat amount) 1E12)) :address address})
     (map #(clojure.string/split % #" ")
          (clojure.string/split-lines (slurp (str "manual_funding" "/" destination-file)))
          ))))
