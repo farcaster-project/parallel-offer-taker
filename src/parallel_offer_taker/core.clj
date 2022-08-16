@@ -383,9 +383,9 @@
                                        (range min-swap-index max-swap-index))
                         idle-farcasterds (filter #(and (empty? (:swap-ids %)) ;; (farcasterd-running? (:farcaster-id %) config)
                                                        ) running-swaps)]
-                    (if (:sustain options)
+                    (if (and (:sustain options) (seq idle-farcasterds))
                       ;; if user wants to sustain swap quantity, take another offer
-                       (do
+                      (do
                         (println "idle-farcasterds:" idle-farcasterds)
                         (println "retrieving new offers")
                         (reset! offers (offers-get))
