@@ -93,7 +93,8 @@
 
 (comment (map splittable-key-images (get (monero-rpc incoming-transfers) "transfers")))
 
-(defn sweep [key-image outputs target-address]
+
+(defn sweep [key-image target-address]
   {"jsonrpc" "2.0",
    "id" "0",
    "method" "sweep_single",
