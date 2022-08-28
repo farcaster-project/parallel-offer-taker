@@ -283,8 +283,8 @@
 (def process-ids (atom {}))
 
 (defn launch-process [process swap-index config]
-  (if (not  (or (contains? @process-ids (keyword (str process "-" swap-index)))
-                (process-id-exact process swap-index config)))
+  (if (not (or (contains? @process-ids (keyword (str process "-" swap-index)))
+               (process-id-exact process swap-index config)))
     (->> config
          ((process-launch-vec process) swap-index)
          (append-logging swap-index config)
@@ -317,9 +317,9 @@
   (let [process-id (or (process-id-exact :farcasterd swap-index config)
                        (farcasterd-process-id swap-index))]
     (if process-id
-      (do (shell/sh "kill" "-s" "SIGTERM" (str process-id))
-          (swap! process-ids #(dissoc % swap-index))
-          (println "killed swap instance" swap-index))
+      (do (shell/sh "kill" "-s" "SIGKILL" (str process-id))
+          (println "killed swap instance" swap-index "with process-id" process-id)
+          (swap! process-ids #(dissoc % swap-index)))
       (throw (Exception. (str "no process for swap-index " swap-index))))))
 
 (comment
@@ -383,17 +383,19 @@
                                        (range min-swap-index max-swap-index))
                         idle-farcasterds (filter #(and (empty? (:swap-ids %)) ;; (farcasterd-running? (:farcaster-id %) config)
                                                        ) running-swaps)]
-                    (if (and (:sustain options) (seq idle-farcasterds))
-                      ;; if user wants to sustain swap quantity, take another offer
-                      (do
-                        (println "idle-farcasterds:" idle-farcasterds)
-                        (println "retrieving new offers")
-                        (reset! offers (offers-get))
-                        (doall (map #(offer-take (:farcaster-id %) config) idle-farcasterds)))
-                      ;; else kill the daemon
-                      (do
-                        (println "killing daemon")
-                        (doall (map #(kill-farcasterd (:farcaster-id %) config) idle-farcasterds))))
+                    (if (seq idle-farcasterds)
+                      (if (:sustain options)
+                        ;; if user wants to sustain swap quantity, take another offer
+                        (do
+                          (println "idle-farcasterds:" idle-farcasterds)
+                          (println "retrieving new offers")
+                          (reset! offers (offers-get))
+                          (doall (map #(offer-take (:farcaster-id %) config) idle-farcasterds)))
+                        ;; else kill the daemon
+                        (do
+                          (println "killing daemons" idle-farcasterds)
+                          (doall (map #(kill-farcasterd (:farcaster-id %) config) idle-farcasterds))))
+                      (println "no idle daemons"))
 
                     (doall (map clojure.pprint/pprint
                                 [(java.util.Date.)
