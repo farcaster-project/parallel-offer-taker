@@ -9,6 +9,7 @@
                         ;; "--initialize-at-build-time=clojure,clojure.core.server"
                         "--initialize-at-build-time"
                         "--enable-https"
+                        "--enable-http"
                         "--report-unsupported-elements-at-runtime"
                         ;; optional native image name override
                         "-H:Name=parallel-offer-taker"]

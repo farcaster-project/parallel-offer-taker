@@ -7,13 +7,24 @@
 
 (def destination-file (atom "default-xmr"))
 
+(defn fixed-float-to-big-int [ff]
+  ((fn [[head tail]] (bigint (+ (* (bigint head) 1E12)
+                               (bigint (apply str tail (repeat (- 12 (count tail)) "0"))))))
+   (clojure.string/split ff #"\.")))
+
+(comment
+  (= 323588650000
+     (fixed-float-to-big-int "0.323588650000")
+     (fixed-float-to-big-int "0.32358865000")
+     (fixed-float-to-big-int "0.32358865")))
+
 (defn destination-array
-  ([] (destination-array destination-file))
+  ([] (destination-array @destination-file))
   ([destination-file]
    (map
-    (fn [[amount address]] {:amount (bigint (+ (* (Float/parseFloat amount) 1E12) 1E10)) :address address})
+    (fn [[amount address]] {:amount (fixed-float-to-big-int amount) :address address})
     (map #(clojure.string/split % #" ")
-         (clojure.string/split-lines (slurp (str "manual_funding" "/" @destination-file)))
+         (clojure.string/split-lines (slurp (str "manual_funding" "/" destination-file)))
          ))))
 
 (def get-balance
@@ -82,7 +93,8 @@
 
 (comment (map splittable-key-images (get (monero-rpc incoming-transfers) "transfers")))
 
-(defn sweep [key-image outputs target-address]
+
+(defn sweep [key-image target-address]
   {"jsonrpc" "2.0",
    "id" "0",
    "method" "sweep_single",

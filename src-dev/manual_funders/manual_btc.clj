@@ -26,6 +26,4 @@
 
 (comment (electrum "broadcast" (:out (paytomany-output (destination-array)))))
 
-(comment (println (map #(clojure.java.shell/sh "***REMOVED***" "--testnet" "broadcast" %) (map :out outputs))))
-
 (comment (electrum "broadcast" "***REMOVED***"))

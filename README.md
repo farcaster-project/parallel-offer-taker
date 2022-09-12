@@ -12,7 +12,7 @@ use a configuration `.edn` file to configure:
 - `:farcaster-binaries-path` points to the directory containing `farcasterd` and `swap-cli`
 - `:farcaster-config-toml-file` points to the `.toml` file containing your configuration
 
-A sample configuration file can be found [here](./config-sample.edn). The config file's location is passed to `parallel-offer-taker` with the `--config` flag, else assumed to be `./config.edn`.
+A sample configuration file can be found [here](./config-sample.edn). The config file's location is passed to `parallel-offer-taker` with the `--config` flag, else `config-sample.edn` will be read in.
 
 ## usage
 - `clj -M:native-image` or download binary from the latest action build from https://github.com/farcaster-project/parallel-offer-taker/actions/workflows/native-image.yaml?query=branch%3Amain to the directory containing `config.edn`
