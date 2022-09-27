@@ -1,9 +1,12 @@
 {
  :address-btc "changeToBTCAddress"
  :address-xmr "changeToXMRAddress"
- :data-dir-root nil
- :farcaster-binaries-path nil
- :farcaster-config-toml-file nil
+ :data-dir-root "./data_dirs"
+ ;; optional - this is the default
+ :farcaster-binaries-path "~/.cargo/bin/"
+ ;; optional - this is the default
+ :farcaster-config-toml-file "~/.farcaster/farcasterd.toml"
+ ;; optional - this is the default
  :monero-wallet-rpc-binary "monero-wallet-rpc"
  :monero-wallet-rpc-options "--stagenet --disable-rpc-login --trusted-daemon --daemon-host changeToHost:38081 --daemon-login user:pass"
  :monero-wallet-rpc-start-rpc-port 38083
