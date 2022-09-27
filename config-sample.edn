@@ -4,5 +4,7 @@
  :data-dir-root nil
  :farcaster-binaries-path nil
  :farcaster-config-toml-file nil
- :monero-wallet-rpc-binary nil
+ :monero-wallet-rpc-binary "monero-wallet-rpc"
+ :monero-wallet-rpc-options "--stagenet --disable-rpc-login --trusted-daemon --daemon-host changeToHost:38081 --daemon-login user:pass"
+ :monero-wallet-rpc-start-rpc-port 38083
  }
