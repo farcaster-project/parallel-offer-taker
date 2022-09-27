@@ -11,6 +11,9 @@ use a configuration `.edn` file to configure:
 - `:data-dir-root` points to the directory where your `.data_dir_$SWAP_INDEX` dirs will live
 - `:farcaster-binaries-path` points to the directory containing `farcasterd` and `swap-cli`
 - `:farcaster-config-toml-file` points to the `.toml` file containing your configuration
+- `:monero-wallet-rpc-binary` points to the `monero-wallet-rpc` binary
+- `:monero-wallet-rpc-options` is a string of options to pass to `monero-wallet-rpc`
+- `:monero-wallet-rpc-start-rpc-port` is the start of the rpc port to use for the `monero-wallet-rpc` instances spawned
 
 A sample configuration file can be found [here](./config-sample.edn). The config file's location is passed to `parallel-offer-taker` with the `--config` flag, else `config-sample.edn` will be read in.
 
