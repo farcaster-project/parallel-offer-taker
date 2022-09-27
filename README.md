@@ -19,7 +19,7 @@ A sample configuration file can be found [here](./config-sample.edn). The config
 - recommendation: first test whether your farcasterd works manually with the `:farcaster-config-toml-file`.
 - launch with `./parallel-offer-taker $SWAP_START_INDEX_INCLUSIVE $SWAP_END_INDEX_EXCLUSIVE`. 
   i.e. `./parallel-offer-taker 0 50` would launch 50 swaps, with their respective `.data_dir_$SWAP_INDEX` enumerated from 0 - 49. currently, these directories must be created ahead of time - the binary won't do it for you.
-- any farcasterd instance spawned that finishes all its running swaps will be killed automatically.
+- any farcasterd instance spawned that finishes all its running swaps will be killed automatically. If you want the number of swaps to be sustained, pass the `--sustain` flag to `parallel-offer-taker`.
 - if you kill `parallel-offer-taker`, all swaps it spawned will die too.
 - if you relaunch `parallel-offer-taker` and any swaps in the range `$SWAP_START_INDEX_INCLUSIVE..$SWAP_END_INDEX_EXCLUSIVE` were left unfinished before, `parallel-offer-taker` will automatically restore their latest checkpoint
 
