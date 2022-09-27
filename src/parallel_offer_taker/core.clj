@@ -320,7 +320,8 @@
       (do (shell/sh "kill" "-s" "SIGKILL" (str process-id))
           (println "killed swap instance" swap-index "with process-id" process-id)
           (swap! process-ids #(dissoc % swap-index)))
-      (throw (Exception. (str "no process for swap-index " swap-index))))))
+      ;; FIXME: handle properly
+      (println "no process for swap-index" swap-index))))
 
 (comment
   (launch-process :farcasterd 0 (read-config "config.edn"))
