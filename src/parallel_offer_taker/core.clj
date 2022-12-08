@@ -101,7 +101,7 @@
               (clojure.string/replace toml-section
                                       #"monero_rpc_wallet = (\D+)(\d+)" (str "monero_rpc_wallet = $1" (monero-wallet-rpc-port swap-index config)))
               (clojure.string/replace toml-section
-                                      #"monero_wallet_dir_path = .+" (str "monero_wallet_dir_path = " (monero-wallet-rpc-data-dir swap-index config)))
+                                      #"monero_wallet_dir_path = .+" (str "monero_wallet_dir_path = \"" (monero-wallet-rpc-data-dir swap-index config) "\""))
               )
             ) data)
     (clojure.string/join "[" data)
