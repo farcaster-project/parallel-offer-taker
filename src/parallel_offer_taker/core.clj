@@ -97,8 +97,12 @@
     (clojure.string/split data #"\[")
     (map #(if (clojure.core/re-find #"^farcasterd.auto_funding*" %)
             %
-            (clojure.string/replace %
-                                    #"monero_rpc_wallet = (\D+)(\d+)" (str "monero_rpc_wallet = $1" (monero-wallet-rpc-port swap-index config)))
+            (as-> % toml-section
+              (clojure.string/replace toml-section
+                                      #"monero_rpc_wallet = (\D+)(\d+)" (str "monero_rpc_wallet = $1" (monero-wallet-rpc-port swap-index config)))
+              (clojure.string/replace toml-section
+                                      #"monero_wallet_dir_path = .+" (str "monero_wallet_dir_path = " (monero-wallet-rpc-data-dir swap-index config)))
+              )
             ) data)
     (clojure.string/join "[" data)
     (spit (swap-specific-toml-path swap-index config) data)
