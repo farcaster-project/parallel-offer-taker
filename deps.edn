@@ -3,7 +3,7 @@
            :dev {:paths ["src", "src-dev"]}
            :native-image
            {
-            :main-opts ["-m" "clj.native-image" "parallel-offer-taker.core"
+            :main-opts ["-m" "clj.native-image" "parallel-deal-taker.core"
                         "--no-fallback"
                         "--diagnostics-mode"
                         ;; "--initialize-at-build-time=clojure,clojure.core.server"
@@ -12,7 +12,7 @@
                         "--enable-http"
                         "--report-unsupported-elements-at-runtime"
                         ;; optional native image name override
-                        "-H:Name=parallel-offer-taker"]
+                        "-H:Name=parallel-deal-taker"]
             :jvm-opts ["-Dclojure.compiler.direct-linking=true -Djdk.attach.allowAttachSelf=true"]
             :extra-deps
             {clj.native-image/clj.native-image

@@ -9,4 +9,4 @@
     --verbose \
     --no-server \
     "-J-Xmx3g" \
-    parallel_offer_taker.core
+    parallel_deal_taker.core

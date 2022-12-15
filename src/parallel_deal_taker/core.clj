@@ -1,4 +1,4 @@
-(ns parallel-offer-taker.core
+(ns parallel-deal-taker.core
   (:require
    [clj-http.lite.client :as http]
    [clj-yaml.core :as yaml]
@@ -17,22 +17,22 @@
 ;; (println (shell/sh "pwd"))
 ;; (println (shell/sh "ls" "-lah"))
 
-(defn offers-get []
-  (-> (http/get "https://farcaster.dev/api/offers")
+(defn deals-get []
+  (-> (http/get "https://farcaster.dev/api/deals")
       :body
       json/read-json
-      (#(map :raw_offer %)))
+      (#(map :raw_deal %)))
   )
 
-(def offers (atom nil))
+(def deals (atom nil))
 
-(defn update-offers []
-  (reset! offers (offers-get)))
+(defn update-deals []
+  (reset! deals (deals-get)))
 
-(def offers-cached (atom @offers))
+(def deals-cached (atom @deals))
 (comment
-  (count (clojure.set/difference (into #{} @offers) (into #{} @offers-cached)))
-  (count (clojure.set/difference (into #{} @offers-cached) (into #{} @offers))))
+  (count (clojure.set/difference (into #{} @deals) (into #{} @deals-cached)))
+  (count (clojure.set/difference (into #{} @deals-cached) (into #{} @deals))))
 
 (defn read-config [path]
   (clojure.edn/read-string (slurp path)))
@@ -117,14 +117,14 @@
 
 (comment (help))
 
-(defn offer-take [swap-index config]
+(defn deal-take [swap-index config]
   (let [result (apply shell/sh [(farcaster-binary-path config "swap-cli")
                                 "-d" (farcasterd-data-dir swap-index config)
                                 "take" "-w"
                                 "--btc-addr" (:address-btc config)
                                 "--xmr-addr" (:address-xmr config)
-                                "--offer" (nth @offers (mod swap-index (count @offers)))])]
-    (println "took offer for" swap-index)
+                                "--deal" (nth @deals (mod swap-index (count @deals)))])]
+    (println "took deal for" swap-index)
     (println [(:out result) (:err result)])
     ))
 
@@ -162,12 +162,12 @@
     (clojure.pprint/pprint (map #(or (-> (:out %) (yaml/parse-string)) (:err %)) results))
     ))
 
-(defn restore-or-offer-take [swap-index config]
+(defn restore-or-deal-take [swap-index config]
   (let [checkpoints (list-checkpoints swap-index config)]
     (if (empty? checkpoints)
       (do
-        (println "swap" swap-index ": taking offer")
-        (offer-take swap-index config)
+        (println "swap" swap-index ": taking deal")
+        (deal-take swap-index config)
         )
       (do
         (println "swap" (str swap-index ": restoring:") (map :swap_id checkpoints))
@@ -186,16 +186,16 @@
 
 (comment (let [count 20
                config (read-config "config.edn")]
-           (reset! offers (doall (offers-get)))
-           (doall (map #(offer-take % config) (range @simple (+ @simple count))))
+           (reset! deals (doall (deals-get)))
+           (doall (map #(deal-take % config) (range @simple (+ @simple count))))
            (reset! simple (+ count @simple))
-           ;; (reset! offers-bag @offers)
+           ;; (reset! deals-bag @deals)
            (println @simple)
            ))
 
 (comment
-  (update-offers)
-  (pmap offer-take (range 20)))
+  (update-deals)
+  (pmap deal-take (range 20)))
 
 (defn farcasterd-running? [swap-index config]
   (let [data-dir (farcasterd-data-dir swap-index config)]
@@ -373,12 +373,12 @@
         (doall
          (map #(launch-process :monero-wallet-rpc % config) unresponsive-xmr-wallet-rpcs))))
 
-    ;; get offers
-    (reset! offers (offers-get))
-    (println "offers: " @offers)
+    ;; get deals
+    (reset! deals (deals-get))
+    (println "deals: " @deals)
 
-    ;; unless can restore past swap(s), take offer(s)
-    (doall (map #(restore-or-offer-take % config) (range min-swap-index (min max-swap-index (+ min-swap-index (dec (count @offers)))))))
+    ;; unless can restore past swap(s), take deal(s)
+    (doall (map #(restore-or-deal-take % config) (range min-swap-index (min max-swap-index (+ min-swap-index (dec (count @deals)))))))
 
     ;; keep alive
     (while true (do
@@ -390,12 +390,12 @@
                                                        ) running-swaps)]
                     (if (seq idle-farcasterds)
                       (if (:sustain options)
-                        ;; if user wants to sustain swap quantity, take another offer
+                        ;; if user wants to sustain swap quantity, take another deal
                         (do
                           (println "idle-farcasterds:" idle-farcasterds)
-                          (println "retrieving new offers")
-                          (reset! offers (offers-get))
-                          (doall (map #(offer-take (:farcaster-id %) config) idle-farcasterds)))
+                          (println "retrieving new deals")
+                          (reset! deals (deals-get))
+                          (doall (map #(deal-take (:farcaster-id %) config) idle-farcasterds)))
                         ;; else kill the daemon
                         (do
                           (println "killing daemons" idle-farcasterds)
@@ -431,9 +431,9 @@
    ["-h" "--help"]])
 
 (defn usage [options-summary]
-  (->> ["Farcaster Parallel Offer Taker Launcher"
+  (->> ["Farcaster Parallel Deal Taker Launcher"
         ""
-        "Usage: parallel-offer-taker [options] start-index end-index"
+        "Usage: parallel-deal-taker [options] start-index end-index"
         "Positional args:"
         "   start-index Lowest index of swaps to be launched"
         "   end-index   Highest index of swaps to be launched (exclusive)"
