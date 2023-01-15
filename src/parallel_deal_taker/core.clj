@@ -19,6 +19,7 @@
 ;; post http request to farcaster.dev/api/request-deal
 ;; with body {"raw_deal": "raw deal"}
 (defn request-deal [amount asset]
+  (println "requesting deal: " amount " " asset)
   (-> (http/post "https://farcaster.dev/api/request-deal"
                  {:content-type :application/json
                   :body (json/write-str {:amount amount :asset (name asset)})})
