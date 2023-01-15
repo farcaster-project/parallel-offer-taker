@@ -16,12 +16,6 @@
 ;; (println (shell/sh "pwd"))
 ;; (println (shell/sh "ls" "-lah"))
 
-(defn deals-get []
-  (-> (http/get "https://farcaster.dev/api/deals")
-      :body
-      json/read-json
-      (#(map :raw_deal %))))
-
 ;; post http request to farcaster.dev/api/request-deal
 ;; with body {"raw_deal": "raw deal"}
 (defn request-deal [amount asset]
@@ -45,16 +39,6 @@
         (* (- max min))
         (+ min)
         (float))))
-
-(def deals (atom nil))
-
-(defn update-deals []
-  (reset! deals (deals-get)))
-
-(def deals-cached (atom @deals))
-(comment
-  (count (clojure.set/difference (into #{} @deals) (into #{} @deals-cached)))
-  (count (clojure.set/difference (into #{} @deals-cached) (into #{} @deals))))
 
 (defn read-config [path]
   (clojure.edn/read-string (slurp path)))
@@ -197,14 +181,12 @@
 
 (comment (let [count 20
                config (read-config "config.edn")]
-           (reset! deals (doall (deals-get)))
            (doall (map #(deal-take % config) (range @simple (+ @simple count))))
            (reset! simple (+ count @simple))
            ;; (reset! deals-bag @deals)
            (println @simple)))
 
 (comment
-  (update-deals)
   (pmap deal-take (range 20)))
 
 (defn farcasterd-running? [swap-index config]
@@ -368,12 +350,8 @@
         (doall
          (map #(launch-process :monero-wallet-rpc % config) unresponsive-xmr-wallet-rpcs))))
 
-    ;; get deals
-    (reset! deals (deals-get))
-    (println "deals: " @deals)
-
     ;; unless can restore past swap(s), take deal(s)
-    (doall (map #(restore-or-deal-take % config) (range min-swap-index (min max-swap-index (+ min-swap-index (dec (count @deals)))))))
+    (doall (map #(restore-or-deal-take % config) (range min-swap-index max-swap-index)))
 
     ;; keep alive
     (while true (do
@@ -389,7 +367,6 @@
                         (do
                           (println "idle-farcasterds:" idle-farcasterds)
                           (println "retrieving new deals")
-                          (reset! deals (deals-get))
                           (doall (map #(deal-take (:farcaster-id %) config) idle-farcasterds)))
                         ;; else kill the daemon
                         (do
