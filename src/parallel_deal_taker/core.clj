@@ -24,6 +24,30 @@
       (#(map :raw_deal %)))
   )
 
+;; post http request to farcaster.dev/api/request-deal
+;; with body {"raw_deal": "raw deal"}
+(defn request-deal [amount asset]
+  (-> (http/post "https://farcaster.dev/api/request-deal"
+                 {:content-type :application/json
+                  :body (json/write-str {:amount amount :asset (name asset)})})
+      :body
+      json/read-json
+      :result
+      :encoded))
+
+(def trade-bounds {:btc {:min 0.0001 :max 0.001}
+                   :xmr {:min 0.1 :max 100}})
+
+(defn random-trade-amount
+  "generate a random amount between `min` and `max`"
+  [asset]
+  (let [min (get-in trade-bounds [asset :min])
+        max (get-in trade-bounds [asset :max])]
+    (-> (rand)
+        (* (- max min))
+        (+ min)
+        (float))))
+
 (def deals (atom nil))
 
 (defn update-deals []
@@ -118,12 +142,14 @@
 (comment (help))
 
 (defn deal-take [swap-index config]
-  (let [result (apply shell/sh [(farcaster-binary-path config "swap-cli")
+  (let [wanted-asset (rand-nth [:btc :xmr])
+        deal (request-deal (random-trade-amount wanted-asset) wanted-asset)
+        result (apply shell/sh [(farcaster-binary-path config "swap-cli")
                                 "-d" (farcasterd-data-dir swap-index config)
                                 "take" "-w"
                                 "--btc-addr" (:address-btc config)
                                 "--xmr-addr" (:address-xmr config)
-                                "--deal" (nth @deals (mod swap-index (count @deals)))])]
+                                "--deal" deal])]
     (println "took deal for" swap-index)
     (println [(:out result) (:err result)])
     ))
