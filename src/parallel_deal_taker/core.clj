@@ -11,28 +11,35 @@
    clojure.set
    [clojure.string :as string]
    clojure.tools.cli)
-  (:gen-class)
-  )
+  (:gen-class))
 
 ;; (println (shell/sh "pwd"))
 ;; (println (shell/sh "ls" "-lah"))
 
-(defn deals-get []
-  (-> (http/get "https://farcaster.dev/api/deals")
+;; post http request to farcaster.dev/api/request-deal
+;; with body {"raw_deal": "raw deal"}
+(defn request-deal [amount asset]
+  (println "requesting deal: " amount " " asset)
+  (-> (http/post "https://farcaster.dev/api/request-deal"
+                 {:content-type :application/json
+                  :body (json/write-str {:amount amount :asset (name asset)})})
       :body
       json/read-json
-      (#(map :raw_deal %)))
-  )
+      :result
+      :encoded))
 
-(def deals (atom nil))
+(def trade-bounds {:btc {:min 0.00001 :max 0.0001}
+                   :xmr {:min 0.01 :max 0.02}})
 
-(defn update-deals []
-  (reset! deals (deals-get)))
-
-(def deals-cached (atom @deals))
-(comment
-  (count (clojure.set/difference (into #{} @deals) (into #{} @deals-cached)))
-  (count (clojure.set/difference (into #{} @deals-cached) (into #{} @deals))))
+(defn random-trade-amount
+  "generate a random amount between `min` and `max`"
+  [asset]
+  (let [min (get-in trade-bounds [asset :min])
+        max (get-in trade-bounds [asset :max])]
+    (-> (rand)
+        (* (- max min))
+        (+ min)
+        (float))))
 
 (defn read-config [path]
   (clojure.edn/read-string (slurp path)))
@@ -76,8 +83,7 @@
   (json/write-str
    {"jsonrpc" "2.0",
     "id" "0",
-    "method" "get_version",
-    }))
+    "method" "get_version"}))
 
 (defn monero-wallet-rpc-running? [swap-index config]
   (let [rpc-url (monero-wallet-rpc-url swap-index config)]
@@ -101,12 +107,9 @@
               (clojure.string/replace toml-section
                                       #"monero_rpc_wallet = (\D+)(\d+)" (str "monero_rpc_wallet = $1" (monero-wallet-rpc-port swap-index config)))
               (clojure.string/replace toml-section
-                                      #"monero_wallet_dir = .+" (str "monero_wallet_dir = \"" (monero-wallet-rpc-data-dir swap-index config) "\""))
-              )
-            ) data)
+                                      #"monero_wallet_dir = .+" (str "monero_wallet_dir = \"" (monero-wallet-rpc-data-dir swap-index config) "\"")))) data)
     (clojure.string/join "[" data)
-    (spit (swap-specific-toml-path swap-index config) data)
-    )
+    (spit (swap-specific-toml-path swap-index config) data))
   (println "overwrote" (swap-specific-toml-path swap-index config)))
 
 (comment (farcaster-template-config-toml-file (read-config "config.edn"))
@@ -118,39 +121,37 @@
 (comment (help))
 
 (defn deal-take [swap-index config]
-  (let [result (apply shell/sh [(farcaster-binary-path config "swap-cli")
+  (let [wanted-asset (rand-nth [:btc :xmr])
+        deal (request-deal (random-trade-amount wanted-asset) wanted-asset)
+        result (apply shell/sh [(farcaster-binary-path config "swap-cli")
                                 "-d" (farcasterd-data-dir swap-index config)
                                 "take" "-w"
                                 "--btc-addr" (:address-btc config)
                                 "--xmr-addr" (:address-xmr config)
-                                "--deal" (nth @deals (mod swap-index (count @deals)))])]
+                                "--deal" deal])]
     (println "took deal for" swap-index)
-    (println [(:out result) (:err result)])
-    ))
+    (println [(:out result) (:err result)])))
 
 (defn list-running-swaps [swap-index config]
   (let [result (apply shell/sh [(farcaster-binary-path config "swap-cli")
                                 "-d" (farcasterd-data-dir swap-index config)
                                 "ls"])]
     (-> (:out result)
-        (yaml/parse-string))
-    ))
+        (yaml/parse-string))))
 
 (defn list-checkpoints [swap-index config]
   (let [result (apply shell/sh [(farcaster-binary-path config "swap-cli")
                                 "-d" (farcasterd-data-dir swap-index config)
                                 "list-checkpoints"])]
     (-> (:out result)
-        (yaml/parse-string))
-    ))
+        (yaml/parse-string))))
 
 (defn list-swaps [swap-index config]
   (let [result (apply shell/sh [(farcaster-binary-path config "swap-cli")
                                 "-d" (farcasterd-data-dir swap-index config)
                                 "list-swaps"])]
     (-> (:out result)
-        (yaml/parse-string))
-    ))
+        (yaml/parse-string))))
 
 (defn restore-all-checkpoints [swap-index config]
   (let [checkpoints (map :swap_id (list-checkpoints swap-index config))
@@ -159,22 +160,17 @@
                                         "-d" (farcasterd-data-dir swap-index config)
                                         "restore-checkpoint" checkpoint]))
                      checkpoints)]
-    (clojure.pprint/pprint (map #(or (-> (:out %) (yaml/parse-string)) (:err %)) results))
-    ))
+    (clojure.pprint/pprint (map #(or (-> (:out %) (yaml/parse-string)) (:err %)) results))))
 
 (defn restore-or-deal-take [swap-index config]
   (let [checkpoints (list-checkpoints swap-index config)]
     (if (empty? checkpoints)
       (do
         (println "swap" swap-index ": taking deal")
-        (deal-take swap-index config)
-        )
+        (deal-take swap-index config))
       (do
         (println "swap" (str swap-index ": restoring:") (map :swap_id checkpoints))
-        (restore-all-checkpoints swap-index config)
-        )
-      ))
-  )
+        (restore-all-checkpoints swap-index config)))))
 
 (comment (->> "config.edn"
               read-config
@@ -186,25 +182,20 @@
 
 (comment (let [count 20
                config (read-config "config.edn")]
-           (reset! deals (doall (deals-get)))
            (doall (map #(deal-take % config) (range @simple (+ @simple count))))
            (reset! simple (+ count @simple))
            ;; (reset! deals-bag @deals)
-           (println @simple)
-           ))
+           (println @simple)))
 
 (comment
-  (update-deals)
   (pmap deal-take (range 20)))
 
 (defn farcasterd-running? [swap-index config]
   (let [data-dir (farcasterd-data-dir swap-index config)]
     (if data-dir (try (-> (apply shell/sh
-                                 [
-                                  (str (farcaster-binary-dir config) "swap-cli")
+                                 [(str (farcaster-binary-dir config) "swap-cli")
                                   "-d" data-dir
-                                  "info"
-                                  ])
+                                  "info"])
                           :err
                           (= ""))
                       (catch Exception e
@@ -212,28 +203,21 @@
                         false))
         false)))
 
-
-
-
 (comment (farcasterd-running? 0 (read-config "config.edn")))
 
 (defn farcasterd-launch-vec [swap-index config]
   (let [data-dir (farcasterd-data-dir swap-index config)]
-    [
-     (str (farcaster-binary-dir config) "farcasterd")
+    [(str (farcaster-binary-dir config) "farcasterd")
      "-c" (swap-specific-toml-path swap-index config)
-     "-d" data-dir
-     ]))
+     "-d" data-dir]))
 
 (defn monero-wallet-rpc-launch-vec [swap-index config]
-  (concat [
-             (monero-wallet-rpc-binary config)
-             "--rpc-bind-port" (+
-                                (:monero-wallet-rpc-start-rpc-port config)
-                                swap-index)
-             "--wallet-dir" (monero-wallet-rpc-data-dir swap-index config)
-             ]
-            (clojure.string/split (:monero-wallet-rpc-options config) #" ")))
+  (concat [(monero-wallet-rpc-binary config)
+           "--rpc-bind-port" (+
+                              (:monero-wallet-rpc-start-rpc-port config)
+                              swap-index)
+           "--wallet-dir" (monero-wallet-rpc-data-dir swap-index config)]
+          (clojure.string/split (:monero-wallet-rpc-options config) #" ")))
 
 (defn append-logging [swap-index config binary-launch-vec]
   (let [binary-name (-> binary-launch-vec
@@ -248,8 +232,7 @@
       "&"
       "\n"
       "echo"
-      "$!"
-      ])))
+      "$!"])))
 
 (defn process-launch-vec [process]
   (case process
@@ -258,8 +241,7 @@
 
 (defn process-id-exact [process swap-index config]
   (try (->> ["bash" "-c" (str "ps -ef | grep \"" (string/join " "
-                                                              ((process-launch-vec process) swap-index config)) "$\" | grep -v grep | awk '{print $2}'"
-                              )]
+                                                              ((process-launch-vec process) swap-index config)) "$\" | grep -v grep | awk '{print $2}'")]
             (apply shell/sh)
             :out
             string/trim-newline
@@ -270,8 +252,7 @@
 
 (defn farcasterd-process-id [swap-index]
   (try
-    (->> ["bash" "-c" (str "ps -ef | grep farcasterd | grep \".data_dir_" swap-index "$\" | grep -v grep | awk '{print $2}'"
-                           )]
+    (->> ["bash" "-c" (str "ps -ef | grep farcasterd | grep \".data_dir_" swap-index "$\" | grep -v grep | awk '{print $2}'")]
          (apply shell/sh)
          :out
          string/trim-newline
@@ -296,8 +277,8 @@
          (shell/sh "bash" "-c")
          ((comp #(Integer/parseInt %) string/trim-newline :out))
          ((fn [pid] (do (swap! process-ids
-                              (fn [m] (assoc m (keyword (str process "-" swap-index)) pid)))
-                       (println "launched process" pid "for swap-index" swap-index)))))
+                               (fn [m] (assoc m (keyword (str process "-" swap-index)) pid)))
+                        (println "launched process" pid "for swap-index" swap-index)))))
     (println process swap-index "already running with pid" (get @process-ids swap-index))))
 
 (defn launch-monero-wallet-rpc [swap-index config]
@@ -309,8 +290,8 @@
          (shell/sh "bash" "-c")
          ((comp #(Integer/parseInt %) string/trim-newline :out))
          ((fn [pid] (do (swap! process-ids
-                                      (fn [m] (assoc m swap-index pid)))
-                               (println "launched process" pid "for swap-index" swap-index)))))
+                               (fn [m] (assoc m swap-index pid)))
+                        (println "launched process" pid "for swap-index" swap-index)))))
     (println "swap" swap-index "already running with pid" (get @process-ids swap-index))))
 
 (comment
@@ -340,8 +321,7 @@
                      swaps)]
     (if (seq results)
       (clojure.pprint/pprint (map #(-> (or (:out %) (:err %))
-                                       (yaml/parse-string)) results)))
-    ))
+                                       (yaml/parse-string)) results)))))
 
 (defn runner [min-swap-index max-swap-index options]
   (let [config (:config options)
@@ -356,8 +336,7 @@
     ;; ensure all daemons running
     (if (empty? unresponsive-daemons)
       (do
-        (println "all farcasterd instances running -> can continue!")
-        )
+        (println "all farcasterd instances running -> can continue!"))
       (do
         (println "following daemons aren't responding, launching them first:" unresponsive-daemons)
         (doall (map #(launch-process :farcasterd % config) unresponsive-daemons))))
@@ -365,20 +344,15 @@
     ;; ensure all monero-wallet-rpcs are listening
     (if (empty? unresponsive-xmr-wallet-rpcs)
       (do
-        (println "all monero-wallet-rpc instances running -> can continue!")
-        )
+        (println "all monero-wallet-rpc instances running -> can continue!"))
       (do
         (println "following rpc daemons aren't responding, launching them first:" unresponsive-xmr-wallet-rpcs)
 
         (doall
          (map #(launch-process :monero-wallet-rpc % config) unresponsive-xmr-wallet-rpcs))))
 
-    ;; get deals
-    (reset! deals (deals-get))
-    (println "deals: " @deals)
-
     ;; unless can restore past swap(s), take deal(s)
-    (doall (map #(restore-or-deal-take % config) (range min-swap-index (min max-swap-index (+ min-swap-index (dec (count @deals)))))))
+    (doall (map #(restore-or-deal-take % config) (range min-swap-index max-swap-index)))
 
     ;; keep alive
     (while true (do
@@ -387,14 +361,13 @@
                                        (fn [idx] {:farcaster-id idx :swap-ids (list-running-swaps idx config)})
                                        (range min-swap-index max-swap-index))
                         idle-farcasterds (filter #(and (empty? (:swap-ids %)) ;; (farcasterd-running? (:farcaster-id %) config)
-                                                       ) running-swaps)]
+                                                       )running-swaps)]
                     (if (seq idle-farcasterds)
                       (if (:sustain options)
                         ;; if user wants to sustain swap quantity, take another deal
                         (do
                           (println "idle-farcasterds:" idle-farcasterds)
                           (println "retrieving new deals")
-                          (reset! deals (deals-get))
                           (doall (map #(deal-take (:farcaster-id %) config) idle-farcasterds)))
                         ;; else kill the daemon
                         (do
@@ -405,19 +378,13 @@
                     (doall (map clojure.pprint/pprint
                                 [(java.util.Date.)
                                  "running swaps:"
-                                 {
-                                  :details (filter #(seq (:swap-ids %)) running-swaps)
+                                 {:details (filter #(seq (:swap-ids %)) running-swaps)
                                   :farcasterd-running (map #(farcasterd-running? (:farcaster-id %) config) running-swaps)
                                   :count
                                   (->> running-swaps
                                        (map :swap-ids)
                                        (apply concat)
-                                       count)}
-                                 ]
-                                )))
-                  ))
-    )
-  )
+                                       count)}])))))))
 
 (def cli-options
   [["-c" "--config CONFIG" "Config file"
@@ -460,9 +427,9 @@
       ;; custom validation on arguments
       (and (= 2 (count arguments))
            (every? (fn [arg] (try (Integer/parseInt arg)
-                                 (catch Exception e
+                                  (catch Exception e
                                    ;; TODO: cleaner return - cause alone here not sufficient, and rest too verbose
-                                   (println "failure parsing" arg "as integer:" e))))
+                                    (println "failure parsing" arg "as integer:" e))))
                    arguments))
       {:start-range (Integer/parseInt (first arguments))
        :end-range (Integer/parseInt (second arguments))
@@ -486,14 +453,12 @@
     (every? identity
             [(valid-shell-call? [(farcaster-binary-path config "swap-cli") "help"])
              (valid-shell-call? [(farcaster-binary-path config "farcasterd") "--help"])
-             (valid-shell-call? [(or (:monero-wallet-rpc-binary config) "monero-wallet-rpc") "--help"])])
-    ))
+             (valid-shell-call? [(or (:monero-wallet-rpc-binary config) "monero-wallet-rpc") "--help"])])))
 
 (defn exit [status msg]
   (println msg)
   ;; (println "exiting with status" status)
-  (System/exit status)
-  )
+  (System/exit status))
 
 (defn -main [& args]
   (let [{:keys [start-range end-range options exit-message ok?]} (validate-args args)]
@@ -501,5 +466,4 @@
       (exit (if ok? 0 1) exit-message)
       #_{:clj-kondo/ignore [:missing-else-branch]}
       (if (validate-config options)
-        (runner start-range end-range options))
-      )))
+        (runner start-range end-range options)))))
