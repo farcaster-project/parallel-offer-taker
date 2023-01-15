@@ -33,8 +33,8 @@
       :result
       :encoded))
 
-(def trade-bounds {:btc {:min 0.0001 :max 0.001}
-                   :xmr {:min 0.1 :max 0.2}})
+(def trade-bounds {:btc {:min 0.00001 :max 0.0001}
+                   :xmr {:min 0.01 :max 0.02}})
 
 (defn random-trade-amount
   "generate a random amount between `min` and `max`"
