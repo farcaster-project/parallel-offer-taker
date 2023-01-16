@@ -20,13 +20,18 @@
 ;; with body {"raw_deal": "raw deal"}
 (defn request-deal [amount asset]
   (println "requesting deal: " amount " " asset)
-  (-> (http/post "https://farcaster.dev/api/request-deal"
-                 {:content-type :application/json
-                  :body (json/write-str {:amount amount :asset (name asset)})})
-      :body
-      json/read-json
-      :result
-      :encoded))
+  (try (-> (http/post "https://farcaster.dev/api/request-deal"
+                      {:content-type :application/json
+                       :body (json/write-str {:amount amount :asset (name asset)})})
+           :body
+           json/read-json
+           :result
+           :encoded)
+       (catch Exception e
+         (println "request-deal exception: " e)
+         (println "retrying")
+         (Thread/sleep 10000)
+         (request-deal amount asset))))
 
 (def trade-bounds {:btc {:min 0.00001 :max 0.0001}
                    :xmr {:min 0.01 :max 0.02}})
